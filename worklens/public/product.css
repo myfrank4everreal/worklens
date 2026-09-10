@@ -1,0 +1,13 @@
+.project-card { display:flex; flex-direction:column; min-height:250px; }
+.project-card .description { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:40px; }
+.project-card .card-footer { display:flex; align-items:center; justify-content:space-between; margin-top:auto; padding-top:18px; }
+.view-project { border:0; border-radius:9px; background:var(--ink); color:white; padding:9px 12px; }
+.back-button { border:0; background:transparent; color:var(--accent); padding:0; margin-bottom:20px; }
+.detail-hero { padding:28px; }.detail-hero h2 { font-size:32px; }
+.detail-layout { display:grid; grid-template-columns:1.1fr .9fr; gap:14px; margin-top:14px; }
+.detail-milestone { border-top:1px solid var(--line); padding:15px 0; }.detail-milestone:first-child { border-top:0; }
+.detail-milestone header { display:flex; gap:10px; align-items:flex-start; }.detail-milestone header input { width:auto; margin-top:3px; }
+.detail-tasks { margin:10px 0 0 27px; }.manual-panel { border-left:4px solid #d77a27; }
+.model-secure { color:#18734d; }.model-retained { color:#a55b12; }.security-legend { color:var(--muted); font-size:10px; }
+.settings-grid { display:grid; gap:14px; }
+@media(max-width:850px){.detail-layout{grid-template-columns:1fr}}

@@ -1,0 +1,50 @@
+{
+  "name": "worklens",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Privacy-first local work intelligence assistant",
+  "author": "WorkLens",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "dev": "node --env-file-if-exists=.env --watch src/server.js",
+    "mcp": "node src/mcp-server.js",
+    "check": "node --check src/server.js && node --check src/db.js && node --check src/openrouter.js && node --check src/project-analyzer.js && node --check src/episodes.js && node --check src/pdf.js && node --check src/plan-parser.js && node --check src/mcp-server.js",
+    "electron:dev": "electron .",
+    "dist": "electron-builder --win nsis"
+  },
+  "main": "electron/main.js",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "devDependencies": {
+    "electron": "37.10.3",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.worklens.app",
+    "productName": "WorkLens",
+    "files": [
+      "electron/**/*",
+      "src/**/*",
+      "public/**/*",
+      "package.json",
+      "!**/*.map"
+    ],
+    "asar": false,
+    "directories": {
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "artifactName": "WorkLens-Setup-${version}.exe"
+    }
+  }
+}

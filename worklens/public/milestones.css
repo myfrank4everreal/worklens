@@ -1,0 +1,57 @@
+/* Project detail: "Milestones and tasks" reorganization — collapsible milestones, a backlog
+   for unassigned tasks, a filter/search bar, and inline per-task milestone reassignment. */
+a.project-action{text-decoration:none;display:inline-block}
+
+/* Containment fix: a CSS Grid or Flexbox item defaults to min-width:auto, meaning its column
+   won't shrink past its content's natural (unwrapped) width. One long project name, task title,
+   file path, or a native <select>'s widest option is enough to force that column wider than its
+   share and push the whole layout past the viewport — the classic "grid blowout." Zeroing it out
+   on every multi-column container's direct children is the standard fix: each column can now
+   actually shrink to the space it's given, and the existing wrap/ellipsis/line-clamp rules on the
+   content inside handle the overflow locally instead of the whole page growing to avoid it. */
+.grid>*,.stats>*,.project-grid>*,.detail-layout>*,.hero>*{min-width:0}
+main{overflow-x:hidden}
+.detail-hero h2,.project-card h3{overflow-wrap:break-word}
+.detail-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.detail-filter-bar{display:flex;align-items:center;gap:12px;flex:1;min-width:200px}
+.detail-filter-bar input[type=search]{flex:1;min-width:140px}
+.hide-done-toggle{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap;margin:0}
+.hide-done-toggle input{width:auto}
+.milestone-add-task{border:1px solid var(--line);background:#f6f4ff;color:var(--accent);border-radius:8px;padding:6px 10px;font-size:11px;font-weight:600;white-space:nowrap;flex:0 0 auto}
+.detail-toolbar>.milestone-add-task{background:var(--ink);color:white;border-color:var(--ink)}
+
+.detail-milestone{border-top:1px solid var(--line);padding:14px 0}
+.detail-milestone:first-of-type{border-top:0}
+.detail-milestone.filtered-out,.detail-task-row.filtered-out,.backlog-section.filtered-out{display:none}
+.detail-milestone header{display:grid;grid-template-columns:auto auto 1fr auto auto;align-items:start;gap:10px}
+.milestone-toggle{border:0;background:transparent;color:var(--muted);font-size:11px;padding:3px 2px;line-height:1;cursor:pointer}
+.detail-milestone header input[type=checkbox]{margin-top:3px}
+.milestone-heading{min-width:0}
+.milestone-heading strong,.milestone-heading small{display:block;overflow-wrap:break-word}
+.milestone-heading small{color:var(--muted);font-size:11px;margin-top:3px}
+.milestone-count{font-size:10px;color:var(--muted);font-weight:700;white-space:nowrap;padding-top:2px}
+.detail-milestone.collapsed .detail-tasks{display:none}
+.detail-milestone.collapsed .milestone-heading small{display:none}
+
+.detail-tasks{margin:12px 0 0 44px;display:flex;flex-direction:column}
+.detail-task-row .row{padding:8px 0}
+.detail-task-row .time{width:auto}
+.task-milestone-select{width:auto;max-width:190px;font-size:10px;padding:5px 7px;border-radius:6px;color:var(--muted)}
+
+.backlog-section{border-top:2px dashed var(--line);margin-top:6px;padding-top:16px}
+.backlog-header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.backlog-header strong,.backlog-header small{display:block}
+.backlog-header small{color:var(--muted);font-size:11px;margin-top:2px}
+.backlog-section .detail-tasks{margin-left:0}
+
+@media(max-width:620px){
+  /* The 5-column header grid (toggle/checkbox/title/count/add-task) has no room to stay one
+     row on a phone; switching to a wrapping flex row lets the heading claim a full line of its
+     own (flex-basis:100% forces the wrap) while everything else stays compact around it. */
+  .detail-milestone header{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+  .milestone-heading{flex-basis:100%}
+  .milestone-count{margin-right:auto}
+  .detail-tasks{margin-left:20px}
+  .detail-task-row .row{flex-wrap:wrap}
+  .task-milestone-select{max-width:none;flex:1 1 100%;margin-top:6px}
+}

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "worklens": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["C:\\Users\\User\\Documents\\ChatGPT\\Research\\worklens\\src\\mcp-server.js"]
+    }
+  }
+}

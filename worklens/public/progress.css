@@ -1,0 +1,18 @@
+.progress-meta { display:flex; justify-content:space-between; align-items:end; gap:10px; margin-top:18px; }
+.progress-meta strong { font-size:13px; }
+.progress-meta span { color:var(--muted); font-size:10px; text-align:right; }
+.progress { height:8px; background:#ecebe5; border-radius:99px; overflow:hidden; margin-top:7px; }
+.progress i { display:block; height:100%; border-radius:99px; transition:width .35s ease; }
+.progress-note { min-height:20px; font-size:11px!important; }
+.root-path { display:block; color:var(--muted); font:10px/1.4 ui-monospace,monospace; margin-top:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.milestones { margin:14px 0; padding:10px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.milestones label { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:7px; margin:6px 0; font-size:11px; }
+.milestones input { width:auto; }
+.milestones small { color:var(--muted); font-size:9px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.project-top { display:flex; justify-content:space-between; align-items:center; }
+.analyze-project { border:1px solid var(--line); background:#f6f4ff; color:var(--accent); border-radius:8px; padding:6px 8px; font-size:10px; }
+.analyze-project:disabled { opacity:.55; }
+.project-action { border:0; background:transparent; color:var(--muted); padding:6px; font-size:10px; }
+.project-action.danger { color:#a53b34; }
+.manual-badge { display:inline-block; text-decoration:none; font-style:normal; color:#8c450a; background:#fff0df; border-radius:99px; padding:3px 6px; margin-left:5px; font-size:8px; text-transform:uppercase; letter-spacing:.4px; }
+.analysis-time { display:block; color:var(--muted); font-size:9px; margin-top:10px; }

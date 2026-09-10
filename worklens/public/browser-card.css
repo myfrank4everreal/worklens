@@ -1,0 +1,7 @@
+.browser-card { display:flex; align-items:center; justify-content:space-between; margin-top:14px; }
+.browser-card h3 { margin:6px 0; }
+.browser-card p { margin:0; color:var(--muted); font-size:12px; }
+.connection-key { display:flex; align-items:center; gap:8px; }
+.connection-key code { background:#f0efe9; border:1px solid var(--line); border-radius:8px; padding:9px 11px; max-width:230px; overflow:hidden; text-overflow:ellipsis; }
+.connection-key button { border:0; border-radius:8px; background:var(--ink); color:white; padding:9px 12px; }
+@media(max-width:700px) { .browser-card { align-items:flex-start; gap:14px; flex-direction:column; } .connection-key { width:100%; } .connection-key code { flex:1; } }

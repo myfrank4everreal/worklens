@@ -1,0 +1,11 @@
+.url-only-card { margin-top:14px; }
+.url-only-card>div:first-child { margin-bottom:14px; }
+.url-only-card h3 { margin:6px 0; }
+.url-only-card p { color:var(--muted); font-size:12px; margin:0; }
+.warning { color:#a35d12; }
+.url-only-form { display:grid; grid-template-columns:minmax(200px,1fr) auto; gap:9px; align-items:center; }
+.url-only-form label { grid-column:1/-1; display:flex; align-items:center; gap:8px; margin:0; color:#74400b; font-size:11px; }
+.url-only-form label input { width:auto; }
+.url-only-form button { border:0; border-radius:9px; background:#8b4b0d; color:white; padding:10px 13px; }
+#urlOnlyResult { grid-column:1/-1; white-space:pre-wrap; background:#f7f4ec; border-radius:9px; padding:13px; font:12px/1.6 inherit; }
+@media(max-width:700px) { .url-only-form { grid-template-columns:1fr; } .url-only-form label { grid-column:auto; } }

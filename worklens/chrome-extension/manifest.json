@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "WorkLens Activity Connector",
+  "version": "0.1.0",
+  "description": "Privately sync selected Chrome history metadata to your local WorkLens app.",
+  "permissions": ["history", "storage", "alarms"],
+  "host_permissions": ["http://localhost:4317/*"],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_title": "WorkLens",
+    "default_popup": "popup.html"
+  }
+}

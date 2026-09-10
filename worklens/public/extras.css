@@ -1,0 +1,15 @@
+.hero-actions{display:flex;flex-direction:column;gap:8px;align-items:flex-end}.hero-actions button{white-space:nowrap}#weeklyReview{background:transparent;color:#cfd3cc;border:1px solid #454943}
+.focus-pin{display:flex;align-items:center;gap:8px;margin-top:14px}.focus-pin label{margin:0;font-size:11px;color:#9fa89d;text-transform:uppercase;letter-spacing:1px;font-weight:700}.focus-pin select{width:auto;background:#2a2e28;color:white;border-color:#454943;padding:6px 9px;font-size:12px}
+.date-nav{display:flex;align-items:center;gap:6px}.date-nav button{border:1px solid var(--line);background:white;border-radius:8px;padding:6px 10px;font-size:13px}.date-nav input{width:auto;padding:6px 9px}
+.reassign{width:auto;font-size:11px;padding:4px 6px;border-radius:6px;margin-left:8px}
+.idle-row{opacity:.55}.idle-row .row-main strong{font-style:italic}
+.confidence-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:99px;margin-left:6px;vertical-align:middle}.confidence-low{background:#fbe9e4;color:#b3462c}.confidence-mid{background:#fbf3d8;color:#8a6d16}
+.ask-card{display:flex;flex-direction:column;min-height:420px}.ask-thread{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding:6px 2px 16px}
+.ask-msg{max-width:82%;padding:12px 14px;border-radius:12px;font-size:13px;line-height:1.55}.ask-msg.user{align-self:flex-end;background:var(--ink);color:white}.ask-msg.assistant{align-self:flex-start;background:#f2f1ec;border:1px solid var(--line)}
+.ask-msg .evidence{margin-top:10px;padding-top:8px;border-top:1px solid #0002;font-size:11px;opacity:.85}.ask-msg.assistant .evidence{border-top-color:var(--line)}.ask-msg .evidence div{margin-top:4px}
+.ask-form{display:flex;gap:10px;margin-top:auto}.ask-form input{flex:1}
+.export-actions{display:flex;gap:10px;flex-wrap:wrap}.export-actions a{border:1px solid var(--line);border-radius:9px;padding:9px 14px;background:white;color:var(--ink);text-decoration:none;font-size:13px}
+.reminder-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #eeede8}.reminder-row:first-child{border-top:0}.reminder-row .dismiss{border:0;background:transparent;color:var(--muted);font-size:11px}.reminder-row.due-soon .row-main strong{color:#b3462c}
+.drift-banner{background:#fbf3d8;border:1px solid #ecd98a;color:#7a5f10;border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:10px}.drift-banner button{border:0;background:transparent;color:#7a5f10;font-weight:700}
+.resume-brief{background:#eef2ee;border:1px solid #d7ded6;border-radius:12px;padding:16px;margin-bottom:14px}.resume-brief h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}.resume-brief p{margin:0;font-size:13px;line-height:1.6}
+@media(max-width:620px){.hero-actions{flex-direction:row}.ask-msg{max-width:100%}}

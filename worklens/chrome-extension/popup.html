@@ -1,0 +1,10 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="popup.css"></head><body>
+  <header><span>W</span><div><strong>WorkLens</strong><small>Chrome connector</small></div></header>
+  <div id="status" class="status">Checking connection…</div>
+  <label>Connection key</label><input id="key" type="password" placeholder="Paste key from WorkLens">
+  <label>Excluded domains <small>one per line</small></label><textarea id="excludes"></textarea>
+  <label class="toggle"><input id="enabled" type="checkbox"><span>Sync Chrome history</span></label>
+  <button id="save">Connect & enable</button><button id="sync" class="secondary">Sync last 24 hours</button>
+  <p class="privacy">Only titles, domains, and visit times go to localhost. No page contents, cookies, or form data.</p>
+  <script src="popup.js"></script>
+</body></html>

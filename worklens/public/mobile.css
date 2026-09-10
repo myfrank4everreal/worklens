@@ -1,0 +1,17 @@
+.menu-button { display:none; position:fixed; z-index:30; top:16px; left:16px; width:42px; height:42px; border:1px solid var(--line); border-radius:11px; background:white; padding:10px; box-shadow:0 5px 20px #20231f18; }
+.menu-button span { display:block; height:2px; background:var(--ink); margin:4px 0; border-radius:3px; transition:.2s; }
+.nav-backdrop { display:none; position:fixed; z-index:18; inset:0; background:#10120f88; backdrop-filter:blur(2px); }
+.folder-picker { display:grid; grid-template-columns:1fr auto; gap:8px; }
+.folder-picker button { border:1px solid var(--line); border-radius:9px; background:#242622; color:white; padding:9px 12px; }
+.folder-drop { border:1.5px dashed #b9b7ae; border-radius:11px; padding:18px; margin-top:9px; text-align:center; color:var(--muted); font-size:11px; background:#faf9f5; transition:.2s; }
+.folder-drop.dragging { border-color:var(--accent); background:#f0edff; color:var(--accent); }
+.folder-drop strong { display:block; color:var(--ink); font-size:12px; margin-bottom:3px; }
+@media(max-width:620px) {
+  .menu-button { display:block; }
+  aside { display:flex!important; transform:translateX(-105%); transition:transform .24s ease; z-index:25; width:250px; box-shadow:12px 0 40px #1115; }
+  aside.open { transform:translateX(0); }
+  .nav-backdrop.open { display:block; }
+  main { padding-top:72px!important; }
+  header { align-items:flex-start; }
+  h1 { font-size:28px; }
+}
