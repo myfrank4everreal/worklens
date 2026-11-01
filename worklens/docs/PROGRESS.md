@@ -8,6 +8,52 @@ from this session's project memory.
 
 ---
 
+## 2026-11-01 — Workstation phase 1: shell and shared dark design system
+
+**Files touched:** `public/theme.css` (new), `public/index.html`, `public/app.js`, `.gitignore`.
+
+**Why:** WorkLens is becoming the monitoring layer of a wider "Workstation", one window holding
+the day-to-day tools (Brands, a Studio video editor, Voice) alongside WorkLens's own views, all in
+one visual language. The design source is the Brand Command Center page (near-black surfaces,
+hairline borders, white primary accent, Inter for UI and JetBrains Mono for labels/numbers,
+green/amber/red status colours). The six-phase plan: (1) this shell and design system, (2) Brands
+module with persistent storage, (3) media engine (bundled ffmpeg, the video-stitching logic ported
+to Node, Kokoro voice), (4) Studio editor UI, (5) every module logging events to WorkLens so Ask can
+see them, (6) a VoiceStudio connector.
+
+**What changed:**
+- `public/theme.css` holds the design tokens and is loaded last. Rather than rewriting the eight
+  older stylesheets, it re-points their colour variables (`--bg`, `--ink`, `--muted`, `--line`,
+  `--card`, `--accent`, `--green`) at the dark palette and overrides the colours they hard-coded
+  (white cards, light inputs, pastel badges, the light dialog and toast). New modules use only the
+  new tokens. Unstyled buttons get a default via `:where(button:not([class]))`, which has zero
+  specificity, so no existing button rule is overridden by it.
+- The sidebar is now grouped: **WorkLens** (Today, Projects, Tasks, Timeline, Ask, Model activity),
+  **Studio tools** (Brands, Studio, Voice, each tagged with the phase it arrives in) and **System**
+  (Settings), with an icon per entry and a live "Monitoring on/off" indicator that follows the
+  recording state. The inner icon/label spans are `pointer-events:none` so the existing
+  `e.target.matches('.nav')` click handler still sees the button.
+- Brands, Studio and Voice have placeholder screens describing what each will do and what it
+  connects to; `show()` has titles for them.
+- Responsive: the old ≤900px rule hid nav text with `font-size:0` and printed the view name through
+  `.nav:after`. With icons that became a clash, so the rail is now icon-only (`content:none`, labels
+  and captions `display:none`), and the ≤620px phone drawer restores the text. The drawer's logo is
+  pushed right so the fixed menu button no longer covers it.
+- Fonts load from Google Fonts with system fallbacks, so an offline machine still renders correctly.
+- The TeesInspired brand assets and scripts that arrived in the repo root when this session moved
+  here were moved into `media-lab/` and git-ignored; `media-lab/stitch_video.py` is the reference
+  implementation for phase 3's Node port.
+
+**Tested:** `npm run check` and `node --check public/app.js` pass. Ran `src/server.js` on port 4399
+against a copy of `data/worklens.db` in a temp folder (the installed app on 4317 and the real
+database were not touched) and went through Today, Projects, a project detail page, Tasks with the
+Add-task dialog open, Settings and the new Brands screen at 1440px, plus the 820px icon rail and the
+375px phone drawer. Document overflow was 0 at every width and the console showed no errors.
+**Not done yet:** the installed desktop app still shows the old look until it's rebuilt
+(`npm run dist`) and reinstalled; `scripts/smoke.mjs` was not run because Playwright isn't installed here.
+
+---
+
 ## 2026-09-06 — Added: import a pasted plan, a shared WORKLENS.md convention, and an MCP server for agents to report progress
 
 **Files touched:** `src/plan-parser.js` (new), `src/mcp-server.js` (new), `src/openrouter.js`,

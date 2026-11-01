@@ -1,0 +1,179 @@
+/* Workstation design system — the shared dark theme for every module (WorkLens views, Brands,
+   Studio, Voice). Taken from the Brand Command Center design: near-black surfaces, hairline
+   borders, white as the primary accent, Inter for UI text, JetBrains Mono for labels and numbers,
+   and a small set of status colours.
+
+   Loaded LAST in index.html. The original stylesheets still define layout; this file re-points
+   their colour variables at the dark palette and overrides the colours they hard-coded, so new
+   modules only need these tokens and never have to touch the older files. */
+
+:root{
+  --bg:#0a0a0b;
+  --bg-soft:#111113;
+  --surface:#17171b;
+  --surface-2:#1e1e24;
+  --surface-3:#25252e;
+  --border:#26262e;
+  --border-strong:#32323e;
+  --text:#fafafb;
+  --text-muted:#9a9aa4;
+  --text-faint:#5a5a68;
+  --success:#a3ff6e;
+  --warning:#ffb84c;
+  --danger:#ff5a5a;
+  --info:#7aa7ff;
+  --radius:16px;
+  --radius-sm:10px;
+  --font-ui:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Consolas,monospace;
+
+  /* Older variable names, re-pointed so every existing rule follows the dark palette. */
+  --ink:var(--text);
+  --muted:var(--text-muted);
+  --line:var(--border);
+  --card:var(--surface);
+  --accent:var(--text);
+  --green:var(--success);
+}
+
+html{color-scheme:dark}
+body{background:var(--bg);color:var(--text);font-family:var(--font-ui);-webkit-font-smoothing:antialiased}
+::selection{background:#ffffff26}
+a{color:var(--text)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:99px;border:2px solid var(--bg)}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ---------- Sidebar: the workstation's tool switcher ---------- */
+aside{background:var(--bg-soft);border-right:1px solid var(--border);color:var(--text);padding:22px 14px}
+.brand{padding:0 8px 22px}
+.mark{background:var(--text);color:var(--bg);border-radius:10px;font-weight:800}
+.brand small{color:var(--text-faint);font-family:var(--font-mono);font-size:10px;letter-spacing:.5px}
+nav{display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.nav-group{font-family:var(--font-mono);font-size:10px;letter-spacing:1.4px;color:var(--text-faint);text-transform:uppercase;padding:16px 14px 6px}
+.nav-group:first-child{padding-top:0}
+.nav{display:flex;align-items:center;gap:10px;color:var(--text-muted);padding:10px 12px;margin:0;font-size:13px;border:1px solid transparent}
+.nav:hover{background:var(--surface);color:var(--text)}
+.nav.active{background:var(--surface-2);color:var(--text);border-color:var(--border-strong)}
+.nav-icon{width:16px;text-align:center;font-size:13px;opacity:.85;pointer-events:none}
+.nav-label{flex:1;pointer-events:none}
+.nav-soon{font-family:var(--font-mono);font-size:9px;letter-spacing:.6px;color:var(--text-faint);border:1px solid var(--border-strong);border-radius:99px;padding:2px 6px;pointer-events:none}
+.privacy{border-top:1px solid var(--border);padding:16px 8px 0}
+.privacy span{color:var(--success);font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase}
+.privacy small{color:var(--text-faint);font-size:11px}
+.monitor-status{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-family:var(--font-mono);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--text-muted)}
+.monitor-status i{width:7px;height:7px;border-radius:50%;background:var(--text-faint)}
+.monitor-status.on i{background:var(--success);box-shadow:0 0 0 3px #a3ff6e22}
+.monitor-status.on{color:var(--text)}
+
+/* ---------- Page chrome ---------- */
+main{padding:34px 4vw 80px}
+h1{font-size:30px;letter-spacing:-.8px;font-weight:700}
+h2{letter-spacing:-.5px}
+.eyebrow{font-family:var(--font-mono);font-weight:500;letter-spacing:1.4px;color:var(--text-faint);font-size:10px;text-transform:uppercase}
+
+/* ---------- Buttons and form controls ---------- */
+button{color:var(--text)}
+/* Default look for buttons the older markup left unstyled (e.g. "Add milestone"). :where() keeps
+   specificity at zero, so any existing rule for a specific button still wins over this. */
+:where(button:not([class])){background:var(--surface-2);border:1px solid var(--border-strong);border-radius:10px;padding:10px 14px}
+:where(button:not([class])):hover{border-color:var(--text-muted)}
+.primary,.view-project,.connection-key button,.detail-toolbar>.milestone-add-task{background:var(--text);color:var(--bg);border:1px solid var(--text);font-weight:600}
+.primary:hover,.view-project:hover{background:#e6e6ea}
+.record,menu button,.date-nav button,.export-actions a,.folder-picker button{background:var(--surface-2);color:var(--text);border:1px solid var(--border-strong)}
+.record{border-radius:99px;font-family:var(--font-mono);font-size:12px;letter-spacing:.4px}
+.record.on{background:#a3ff6e14;color:var(--success);border-color:#a3ff6e55}
+.section-title button,[data-goto],.back-button{color:var(--text-muted)}
+.section-title button:hover,[data-goto]:hover,.back-button:hover{color:var(--text)}
+input,textarea,select{background:var(--bg-soft);color:var(--text);border:1px solid var(--border-strong)}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--text-muted)}
+input::placeholder,textarea::placeholder{color:var(--text-faint)}
+label{color:var(--text-muted)}
+.milestone-add-task,.analyze-project{background:var(--surface-2);color:var(--text);border-color:var(--border-strong)}
+.project-action{color:var(--text-muted)}
+.project-action.danger{color:var(--danger)}
+
+/* ---------- Cards, stats, hero ---------- */
+.card,.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
+.stat{padding:16px 18px}
+.stat strong{font-family:var(--font-mono);font-size:24px;font-weight:600;letter-spacing:-.5px}
+.stat span{font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-faint)}
+.hero{background:linear-gradient(120deg,#1b1b21,#121215);border:1px solid var(--border-strong)}
+.hero .eyebrow,.focus-pin label{color:var(--text-faint)}
+.hero p{color:var(--text-muted)}
+.hero .primary{background:var(--text);color:var(--bg)}
+#weeklyReview{color:var(--text);border-color:var(--border-strong);background:transparent}
+.focus-pin select{background:var(--surface-2);border-color:var(--border-strong);color:var(--text)}
+.row,.reminder-row{border-top-color:var(--border)}
+.row-main small,.time{color:var(--text-muted)}
+.empty{color:var(--text-faint)}
+.pill{background:var(--surface-3);color:var(--text);font-family:var(--font-mono);letter-spacing:.4px}
+.progress{background:var(--surface-3)}
+.root-path,.milestones small,.analysis-time,.security-legend{color:var(--text-faint)}
+.milestones,.detail-milestone,.backlog-section{border-color:var(--border)}
+.manual-panel{border-left-color:var(--warning)}
+.manual-badge{background:#ffb84c1f;color:var(--warning)}
+
+/* ---------- Status colours (drift, confidence, reminders, model log) ---------- */
+.drift-banner{background:#ffb84c14;border-color:#ffb84c55;color:var(--warning)}
+.drift-banner button{color:var(--warning)}
+.resume-brief{background:var(--surface-2);border-color:var(--border-strong)}
+.confidence-low{background:#ff5a5a1f;color:var(--danger)}
+.confidence-mid{background:#ffb84c1f;color:var(--warning)}
+.reminder-row.due-soon .row-main strong{color:var(--danger)}
+.model-secure{color:var(--success)}
+.model-retained{color:var(--warning)}
+.warning{color:var(--warning)}
+
+/* ---------- Ask ---------- */
+.ask-msg.user{background:var(--text);color:var(--bg)}
+.ask-msg.assistant{background:var(--surface-2);border-color:var(--border-strong);color:var(--text)}
+
+/* ---------- Settings ---------- */
+.connection-key code{background:var(--bg-soft);border-color:var(--border-strong);color:var(--text-muted);font-family:var(--font-mono)}
+.url-only-form label{color:var(--warning)}
+.url-only-form button{background:#ffb84c22;color:var(--warning);border:1px solid #ffb84c55}
+#urlOnlyResult,.review pre{background:var(--bg-soft);color:var(--text)}
+.folder-drop{background:var(--bg-soft);border-color:var(--border-strong);color:var(--text-faint)}
+.folder-drop strong{color:var(--text)}
+.folder-drop.dragging{border-color:var(--text);background:var(--surface-2);color:var(--text)}
+
+/* ---------- Dialog, toast, mobile ---------- */
+dialog{background:var(--surface);color:var(--text);border:1px solid var(--border-strong);box-shadow:0 30px 90px #000a}
+dialog::backdrop{background:#000b;backdrop-filter:blur(3px)}
+#toast{background:var(--text);color:var(--bg);font-weight:500}
+.menu-button{background:var(--surface);border-color:var(--border-strong);box-shadow:none}
+.menu-button span{background:var(--text)}
+.nav-backdrop{background:#000a}
+
+/* ---------- Upcoming tool screens (Brands, Studio, Voice) ---------- */
+.tool-intro{display:grid;grid-template-columns:1.2fr .8fr;gap:14px}
+.tool-intro .card h3{font-size:18px;margin:8px 0 6px}
+.tool-intro .card p{color:var(--text-muted);font-size:13px;line-height:1.6;margin:0}
+.phase-chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--warning);border:1px solid #ffb84c55;background:#ffb84c12;border-radius:99px;padding:4px 10px}
+.feature-list{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:8px}
+.feature-list li{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--text);background:var(--bg-soft);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px}
+.feature-list li:before{content:"→";font-family:var(--font-mono);color:var(--text-faint)}
+.tool-links{display:grid;gap:8px;margin-top:14px}
+.tool-links div{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:8px}
+.tool-links div strong{color:var(--text);font-weight:500;font-family:var(--font-mono);font-size:11px}
+
+@media(max-width:900px){
+  .nav:after{content:none}
+  .brand div,.privacy{display:none}
+  .brand{justify-content:center;padding:0 0 22px}
+  .nav{justify-content:center;padding:10px 0}
+  .nav-label,.nav-soon,.nav-group,.monitor-status{display:none}
+  .nav-icon{font-size:15px;width:auto}
+  .tool-intro{grid-template-columns:1fr}
+}
+@media(max-width:620px){
+  /* The phone drawer is full-width again, so undo the icon-only rail's hidden text. */
+  .nav,.brand div{font-size:13px}
+  .brand div,.privacy{display:block}
+  /* The fixed menu button sits over the drawer's top-left corner, so start the logo after it. */
+  .brand{justify-content:flex-start;padding:0 8px 22px 52px}
+  .nav{justify-content:flex-start;padding:10px 12px}
+  .nav-label,.nav-soon,.nav-group,.monitor-status{display:flex}
+  .nav-group{display:block}
+}
