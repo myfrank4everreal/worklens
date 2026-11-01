@@ -11,6 +11,8 @@ import { inspectProject, collectProject } from './project-analyzer.js';
 import { rollupEpisodes, embedPendingEpisodes, searchEpisodes } from './episodes.js';
 import { renderTextPdf } from './pdf.js';
 import { parsePlainTextPlan } from './plan-parser.js';
+import { brandsApi, seedBrands } from './brands.js';
+import { mediaApi, seedVoiceProfiles } from './media/api.js';
 
 const execFileAsync = promisify(execFile);
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -474,6 +476,8 @@ async function api(req, res, url) {
     setSetting('extension_last_sync', new Date().toISOString()); setSetting('extension_last_count', accepted);
     return json(res, 200, { accepted }, extensionHeaders);
   }
+  if (await brandsApi(req, res, url, { json, body }) !== false) return;
+  if (await mediaApi(req, res, url, { json, body }) !== false) return;
   if (req.method === 'GET' && url.pathname === '/api/dashboard') return json(res, 200, dashboard(url.searchParams.get('date') || undefined));
   if (req.method === 'POST' && url.pathname === '/api/select-folder') {
     try {
@@ -741,6 +745,8 @@ async function maintainEpisodes() {
   try { await embedPendingEpisodes(100); } catch (error) { console.error('Episode embedding failed:', error.message); }
 }
 
+seedBrands();
+seedVoiceProfiles();
 setRecording(getSetting('recording', 'false') === 'true');
 setInterval(checkProjectChanges, 60000);
 setInterval(syncAllChecklists, 60000);

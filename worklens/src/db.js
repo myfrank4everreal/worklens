@@ -5,7 +5,7 @@ import path from 'node:path';
 // Packaged (Electron) runs point this at app.getPath('userData') so the database survives
 // app updates instead of living inside the (replaceable) install directory; `npm start` from
 // source keeps the old ./data behavior.
-const dataDir = path.resolve(process.env.WORKLENS_DATA_DIR || 'data');
+export const dataDir = path.resolve(process.env.WORKLENS_DATA_DIR || 'data');
 fs.mkdirSync(dataDir, { recursive: true });
 
 export const db = new DatabaseSync(path.join(dataDir, 'worklens.db'));
@@ -88,6 +88,69 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS episodes_started_at ON episodes(started_at);
   CREATE INDEX IF NOT EXISTS episodes_project ON episodes(project_id);
+  -- Workstation · Brands: brand workspaces, their social accounts, and one row per day an
+  -- account was posted on. A day-log rather than a single "last posted" column, so history
+  -- (streaks, "what did I post this week") is answerable later.
+  CREATE TABLE IF NOT EXISTS brands (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL DEFAULT '#FF6B35',
+    description TEXT NOT NULL DEFAULT '',
+    project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+    sort INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS brand_accounts (
+    id INTEGER PRIMARY KEY,
+    brand_id INTEGER NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+    platform TEXT NOT NULL,
+    handle TEXT NOT NULL,
+    link TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS brand_posts (
+    id INTEGER PRIMARY KEY,
+    account_id INTEGER NOT NULL REFERENCES brand_accounts(id) ON DELETE CASCADE,
+    posted_on TEXT NOT NULL,
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(account_id, posted_on)
+  );
+  CREATE INDEX IF NOT EXISTS brand_accounts_brand ON brand_accounts(brand_id);
+  CREATE INDEX IF NOT EXISTS brand_posts_account_day ON brand_posts(account_id, posted_on);
+  -- Workstation · Voice and media engine. Files themselves live under <dataDir>/media; these rows
+  -- record what was made, from what, and for whom.
+  CREATE TABLE IF NOT EXISTS voice_profiles (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    engine TEXT NOT NULL DEFAULT 'kokoro',
+    voice TEXT NOT NULL,
+    speed REAL NOT NULL DEFAULT 1,
+    notes TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS voice_clips (
+    id INTEGER PRIMARY KEY,
+    profile_id INTEGER REFERENCES voice_profiles(id) ON DELETE SET NULL,
+    voice TEXT NOT NULL,
+    speed REAL NOT NULL DEFAULT 1,
+    text TEXT NOT NULL,
+    file TEXT NOT NULL,
+    seconds REAL NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS media_renders (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT '',
+    file TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'queued',
+    progress REAL NOT NULL DEFAULT 0,
+    duration REAL NOT NULL DEFAULT 0,
+    error TEXT NOT NULL DEFAULT '',
+    timeline TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    finished_at TEXT
+  );
 `);
 
 for (const statement of [

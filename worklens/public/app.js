@@ -301,3 +301,6 @@ $('#askForm').addEventListener('submit',async e=>{
   input.disabled=false; renderAsk(); input.focus();
 });
 load();setInterval(load,15000);
+// Workstation tools (Brands, and later Studio/Voice) log into WorkLens's activity table; they fire
+// this event after a change so the Timeline and Today stats refresh now, not at the next 15s tick.
+document.addEventListener('workstation:changed',()=>load().catch(()=>{}));

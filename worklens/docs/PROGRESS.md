@@ -8,6 +8,140 @@ from this session's project memory.
 
 ---
 
+## 2026-11-01 — Workstation phase 3: media engine (ffmpeg render jobs) and the Voice tool
+
+**Files touched:** `src/media/ffmpeg.js`, `src/media/render.js`, `src/media/voice.js`,
+`src/media/kokoro_tts.py`, `src/media/api.js` (all new), `src/db.js`, `src/server.js`,
+`package.json`, `public/voice.js`, `public/voice.css` (new), `public/index.html`.
+
+**Why:** Studio (phase 4) needs an engine that can join clips, lay images and audio over them and
+export a finished reel; Voice needs one consistent, commercially usable voice per character. This
+phase builds both engines and the Voice screen; the editor UI comes next.
+
+**Decisions shaped by the machine and connection** (8 GB RAM, no discrete GPU, ~1–9 MB/min
+downloads):
+- **ffmpeg is found, not downloaded** (`ffmpeg.js`): `WORKLENS_FFMPEG` → the `ffmpeg-static` package if
+  installed → the binary Python's `imageio-ffmpeg` already ships → `ffmpeg` on PATH. On this machine
+  that resolves to the imageio copy (ffmpeg 7.1). A packaged build can bundle `ffmpeg-static` later
+  without code changes. `probe()` reads ffmpeg's own banner because that copy has no ffprobe.
+- **Voice uses the Python Kokoro already installed** (`kokoro-onnx` + onnxruntime), called through a
+  short-lived helper (`kokoro_tts.py`), rather than `kokoro-js`, whose `onnxruntime-node` dependency
+  is ~300 MB unpacked. The helper loads the **int8 model (~88 MB)** in preference to the 310 MB fp32 one;
+  quality is close and the download is a third of the size. Kokoro's weights are Apache-2.0.
+  `voice.js` is a thin wrapper, so the engine can later become `kokoro-js` or a VoiceStudio connector
+  without API/UI changes.
+
+**What changed:**
+- **Render engine** (`render.js`), the Node successor to `media-lab/stitch_video.py`: a timeline
+  (`clips` in order, still images with a duration, `overlays` as timed PNGs, extra `audio` tracks with
+  start/in/out/volume, `clipAudio.keep/volume`, optional `endCard`) becomes one ffmpeg command. Every
+  clip is scaled/cropped to fill the frame and normalised (fps, pixel format, SAR), a silent track is
+  generated for clips without audio so `concat` never mismatches, extra audio is `adelay`ed to its
+  start and `amix`ed with a limiter, x264 `veryfast`/CRF 20. Captions are deliberately drawn as PNGs by
+  the editor and passed in as overlays, avoiding ffmpeg `drawtext`'s fragile font-path escaping on
+  Windows. `lastFrame()` keeps the "seamless next clip" trick from the Gemini workflow.
+- **Media API** (`api.js`, routed after the CSRF guard like Brands): files live in
+  `<dataDir>/media/{uploads,voice,renders,frames}`. `GET /api/media/status|library|file` (file
+  serving supports HTTP Range so video/audio can seek), `POST /api/media/upload` (streams the body,
+  type allowlist, 2 GB cap), `POST /api/media/probe`, `POST /api/media/last-frame`, and render jobs:
+  `POST /api/media/renders` (202 + id, runs in the background with progress), `GET
+  /api/media/renders[/:id]`, `DELETE` (cancels a running job or deletes a finished one). Relative paths
+  can't escape the media folder; absolute paths to the person's own files are allowed, since this is
+  a local app. Finished renders log "Rendered video …" to the activity table.
+- **Voice API**: `GET /api/voice` (engine status, voices, character profiles, recent clips), profile
+  CRUD, `POST /api/voice/generate` (by profile or by voice+speed; saves a WAV to the media library and
+  logs "Generated voice line for …"), `DELETE /api/voice/clips/:id`. Tables: `voice_profiles`,
+  `voice_clips`, `media_renders`. Seeded once: **Frank Madu → am_onyx at 0.95×** (deep, calm American
+  voice per his character bible), as a starting point to change after comparing samples.
+- **Voice screen**: engine status chip and a setup card that names exactly what's missing; "Say a
+  line" (character or custom voice + speed); a **Compare voices** panel (same line, up to four voices,
+  with "use for a character"); characters list with edit/delete; recent lines with players. The
+  Brands and Voice sidebar entries lost their phase tags; Studio's placeholder now says the engine is
+  ready.
+
+**Bugs found while testing, fixed:** (1) the helper was run with `python -I`, and isolated mode drops
+per-user site-packages, which is where `pip install --user kokoro-onnx` puts Kokoro, so the package
+looked "missing"; now `-E`. (2) A model file only partly downloaded passed the old "> 1 MB" check and
+would have crashed onnxruntime; each model now has a minimum complete size, and a partial file reports
+"still downloading (N of ~M MB)".
+
+**Tested:** `npm run check` covers every new module. Engine directly: a timeline with a trimmed video
+clip, a still image, a timed PNG overlay, a delayed extra audio track and an end card rendered 8.0 s of
+1080×1920 + audio in 10.6 s on this laptop, with progress callbacks; frames at 1.0/3.5/5.0/7.0 s showed
+the overlay present then gone, the still, and the end card exactly as timed; last-frame extraction
+works. API on port 4397 against a copy of the database: ffmpeg status, uploads (and a rejected `.exe`),
+a `../worklens.db` path traversal rejected, a background render job reaching `done` with a working
+Range request (206), last frame, and the render logged to the timeline. Voice screen in the browser
+pane at 1440px and 375px (no overflow) in the not-ready state with the exact download message.
+Speech synthesis (after the int8 model finished, 92,361,271 bytes): `--list` ≈11s, 28 English
+voices. Generated the same line through /api/voice/generate with the Frank Madu profile (5.63s of
+audio in 21s), am_onyx (5.42s/12s), am_michael (5.40s/21s), am_fenrir (5.23s/17s) and am_adam
+(4.89s/18s); each logged to the timeline. Voice screen in the ready state: engine chip
+"Kokoro ready", Generate enabled, five clips listed and playable.
+
+---
+
+## 2026-11-01 — Workstation phase 2: Brands module (Brand Command Center, persistent)
+
+**Files touched:** `src/brands.js` (new), `src/db.js`, `src/server.js`, `package.json`,
+`public/brands.js` (new), `public/brands.css` (new), `public/index.html`, `public/app.js`.
+
+**Why:** the Brand Command Center page kept its brands and accounts only in that page's memory,
+so nothing survived a reload and WorkLens couldn't see any of it. Its features were recovered from
+the page's compiled React source (brands with name/colour/description; accounts with platform,
+handle, link and last-posted date; Posted Today / Needs Post (1–2 days) / Idle; new brand, add,
+edit and remove account, rename, mark posted) and rebuilt here on the workstation's own storage
+and design tokens.
+
+**What changed:**
+- **Storage** (`src/db.js`): `brands`, `brand_accounts` and `brand_posts`. Posting is a per-day log
+  (`UNIQUE(account_id, posted_on)`) rather than one `last_posted` column, so history ("posts in the
+  last 7 days", later streaks and "what did I post this week") is answerable. Deleting a brand
+  cascades to its accounts and posts.
+- **API** (`src/brands.js`, new): `GET /api/brands`; `POST /api/brands`; `PATCH`/`DELETE
+  /api/brands/:id`; `POST /api/brands/:id/accounts`; `PATCH`/`DELETE /api/brand-accounts/:id`;
+  `POST /api/brand-accounts/:id/posts` (logs today, idempotent, refuses future dates); `DELETE
+  /api/brand-accounts/:id/posts/today` (undo). `server.js` hands each `/api` request to
+  `brandsApi()` right after its existing CSRF guard, so the same trusted-origin rule covers these
+  routes. Handles are normalised to `@handle`; a blank or non-http link is replaced with the
+  platform's profile URL built from the handle.
+- **"Today" is the local calendar day** (`localDay()`), not UTC; the original page used
+  `toISOString()`, which rolls over at 01:00 in West Africa Time.
+- **Seed:** on first run only (guarded by the `brands_seeded` setting, so deleting every brand
+  doesn't bring it back), the person's three real brands and four real accounts: Tees Inspired (IG
+  and Threads @tees_inspiredworld), Mafrex AI (IG @mafrexai), Augustin Frank (FB). The original's
+  placeholder "Brand 4–7" rows with invented handles were left out. No posting days are seeded.
+- **WorkLens integration:** each "mark posted" and "undo" writes an `activities` row (app
+  `Workstation · Brands`, source `workstation`, e.g. "Posted on Instagram: @tees_inspiredworld (Tees
+  Inspired)"). A brand can be linked to a WorkLens project, which tags those rows with that project
+  at full confidence. The rows show on the Timeline and roll into episodes, so Ask can use them.
+  `brands.js` fires a `workstation:changed` DOM event after a change and `app.js` reloads the
+  dashboard on it, so the Timeline updates immediately instead of at the next 15s refresh; Studio and
+  Voice will use the same event.
+- **UI** (`public/brands.js`, `public/brands.css`): overview stats, brand tabs (account count and a
+  posted-today badge), a brand card tinted with the brand's colour (description, platform count,
+  linked project, daily progress bar, posted / needs-post tiles), accounts grouped by platform with
+  status chip, last post, posts in the last 7 days, edit/remove and a "Mark posted today" / "Posted
+  today · undo" button. Its own `<dialog>` handles new/edit brand (seven-colour palette, optional
+  project link), add/edit account and the delete/remove confirmations, kept separate from app.js's
+  modal so the two never compete for one form. The active brand tab is remembered in
+  `localStorage`, wrapped in try/catch.
+
+**Tested:** `npm run check` (now including `src/brands.js`) and `node --check` on both front-end
+files pass. API, with curl against a server on port 4398 using a copy of `data/worklens.db`: seed
+contents and links; the CSRF block on a POST without a trusted origin; mark posted twice (second call
+reports `alreadyLogged`); create brand and account; unknown platform and future date both rejected
+with 400; the activity row written; undo; brand delete cascading to its account. UI in the browser
+pane against the same server: mark posted (chip, progress, tab badge, overview and toast update),
+add a TikTok account through the dialog, edit brand with a project link (meta line shows "LINKED TO
+WORKLENS"), remove an account through the red confirm, undo a post, create and delete a brand, and a
+linked post appearing on the Timeline immediately under the "worklens" project. Document overflow was
+0 at 1440px and 375px, and no console errors. **Not tested:** the packaged Electron app (it needs a
+rebuild to include these files); a real day rollover, which was reasoned through via `localDay()`
+rather than waited for.
+
+---
+
 ## 2026-11-01 — Workstation phase 1: shell and shared dark design system
 
 **Files touched:** `public/theme.css` (new), `public/index.html`, `public/app.js`, `.gitignore`.
