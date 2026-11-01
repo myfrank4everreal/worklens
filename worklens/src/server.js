@@ -13,6 +13,7 @@ import { renderTextPdf } from './pdf.js';
 import { parsePlainTextPlan } from './plan-parser.js';
 import { brandsApi, seedBrands } from './brands.js';
 import { mediaApi, seedVoiceProfiles } from './media/api.js';
+import { workstationApi, workstationCapture, workstationSummary } from './workstation.js';
 
 const execFileAsync = promisify(execFile);
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -93,6 +94,9 @@ async function capture() {
     }
     if (!event.title || event.app === 'powershell') return;
     const title = isSensitive(event.title) ? '[Sensitive window redacted]' : event.title.slice(0, 500);
+    // Time inside the workstation window is recorded per tool, not as one generic WorkLens window.
+    const tool = workstationCapture(event.app, title);
+    if (tool) return extendOrInsert(tool.app, tool.title, tool.projectId, tool.confidence, tool.source);
     const match = classify(event.app, title);
     extendOrInsert(event.app, title, match.projectId, match.confidence, 'windows');
   } catch (error) {
@@ -301,7 +305,8 @@ function dashboard(date = new Date().toISOString().slice(0, 10)) {
     focusProjectId: Number(getSetting('focus_project_id', '')) || null,
     driftMode: getSetting('drift_mode', 'gentle'),
     sensitiveTerms: getSetting('sensitive_terms', ''),
-    drift: computeDrift()
+    drift: computeDrift(),
+    workstation: workstationSummary(date)
   };
 }
 
@@ -478,6 +483,7 @@ async function api(req, res, url) {
   }
   if (await brandsApi(req, res, url, { json, body }) !== false) return;
   if (await mediaApi(req, res, url, { json, body }) !== false) return;
+  if (await workstationApi(req, res, url, { json, body }) !== false) return;
   if (req.method === 'GET' && url.pathname === '/api/dashboard') return json(res, 200, dashboard(url.searchParams.get('date') || undefined));
   if (req.method === 'POST' && url.pathname === '/api/select-folder') {
     try {

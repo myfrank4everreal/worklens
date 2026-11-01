@@ -151,9 +151,19 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     finished_at TEXT
   );
+  CREATE TABLE IF NOT EXISTS studio_projects (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT '',
+    timeline TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 for (const statement of [
+  "ALTER TABLE voice_profiles ADD COLUMN model TEXT NOT NULL DEFAULT ''",
+  "ALTER TABLE voice_clips ADD COLUMN engine TEXT NOT NULL DEFAULT 'kokoro'",
+  "ALTER TABLE studio_projects ADD COLUMN brand_id INTEGER REFERENCES brands(id) ON DELETE SET NULL",
   "ALTER TABLE projects ADD COLUMN root_path TEXT NOT NULL DEFAULT ''",
   "ALTER TABLE projects ADD COLUMN progress_note TEXT NOT NULL DEFAULT ''",
   "ALTER TABLE projects ADD COLUMN auto_analyze INTEGER NOT NULL DEFAULT 1",

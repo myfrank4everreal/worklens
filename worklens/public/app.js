@@ -1,3 +1,4 @@
+import { reportContext } from '/monitor.js';
 let state, currentProjectId=null, timelineDate=new Date().toISOString().slice(0,10), timelineData=null, askHistory=[];
 // Project-detail "Milestones and tasks" UI state. Kept module-level (not derived from the DOM)
 // so a filter, a fold, or a search stays put across the 15s auto-reload and after any mutation
@@ -52,6 +53,7 @@ function render(){
   const activityRows=productive.slice(0,6).map(a=>row(`<span class="dot" style="background:${a.project_color||'#9a9d96'}"></span>`,`<strong>${esc(a.window_title)}</strong><small>${esc(a.project_name||'Unassigned')} · ${esc(a.app_name)}</small>`,time(a.captured_at))).join('');
   $('#recent').innerHTML=activityRows||empty('No activity captured yet.');
   renderTimeline();
+  renderWorkstation(state.workstation);
   const open=state.tasks.filter(x=>x.status!=='done'); $('#openTasks').innerHTML=open.slice(0,6).map(taskRow).join('')||empty('Nothing waiting. Add your next action.'); $('#taskList').innerHTML=state.tasks.map(taskRow).join('')||empty('No tasks yet.');
   $('#projectGrid').innerHTML=state.projects.map(p=>`<article class="card project-card"><div class="project-top"><span class="dot" style="background:${p.color}"></span><div><button class="project-action" data-edit-project="${p.id}">Edit</button><button class="project-action danger" data-delete-project="${p.id}">Remove</button></div></div><h3>${esc(p.name)}</h3><p class="description">${esc(p.description||p.progress_note||'No description yet. Analyze the repository to build its plan.')}</p><div class="progress-meta"><strong>${p.progress}% complete</strong><span>${p.done_tasks}/${p.total_tasks} tasks</span></div><div class="progress"><i style="width:${p.progress}%;background:${p.color}"></i></div><div class="card-footer"><span class="pill">${p.open_tasks} open</span><button class="view-project" data-view-project="${p.id}">View project</button></div></article>`).join('')||empty('Create a project and add identifying keywords.');
   const focusSelect=$('#focusProject');
@@ -188,7 +190,8 @@ function renderProjectDetail(id){
 function row(lead,main,end){return `<div class="row">${lead}<div class="row-main">${main}</div><span class="time">${end}</span></div>`}
 function taskRow(t){return row(`<input class="check" type="checkbox" data-task="${t.id}" ${t.status==='done'?'checked':''}>`,`<strong class="${t.status==='done'?'done':''}" title="${esc(t.title)}">${esc(t.title)} ${t.manual_intervention?'<em class="manual-badge">Manual intervention</em>':''}</strong><small>${esc(t.project_name||'No project')}${t.evidence?` · ${esc(t.evidence)}`:''}</small>`,'')}
 function empty(text){return `<div class="empty">${text}</div>`}
-function show(view){document.querySelectorAll('.view,.nav').forEach(x=>x.classList.remove('active'));$(`#${view}`).classList.add('active');document.querySelector(`.nav[data-view="${view}"]`)?.classList.add('active');$('#title').textContent={today:'Your work, in focus.',projects:'Every workstream, visible.','project-detail':'Project intelligence',tasks:'Turn intent into action.',timeline:'The evidence behind your day.',ask:'Your work, recalled.',models:'Know what your AI is doing.',settings:'Privacy and integrations.',brands:'Every brand, every account.',studio:'Cut, layer, export.',voice:'One voice per character.'}[view]||'Workstation'}
+const VIEW_NAMES={today:'Today',projects:'Projects','project-detail':'Project',tasks:'Tasks',timeline:'Timeline',ask:'Ask WorkLens',models:'Model activity',settings:'Settings',brands:'Brands',studio:'Studio',voice:'Voice'};
+function show(view){reportContext({tool:view,label:VIEW_NAMES[view]||'WorkLens'});document.querySelectorAll('.view,.nav').forEach(x=>x.classList.remove('active'));$(`#${view}`).classList.add('active');document.querySelector(`.nav[data-view="${view}"]`)?.classList.add('active');$('#title').textContent={today:'Your work, in focus.',projects:'Every workstream, visible.','project-detail':'Project intelligence',tasks:'Turn intent into action.',timeline:'The evidence behind your day.',ask:'Your work, recalled.',models:'Know what your AI is doing.',settings:'Privacy and integrations.',brands:'Every brand, every account.',studio:'Cut, layer, export.',voice:'One voice per character.'}[view]||'Workstation'}
 function askBubble(role,html){return `<div class="ask-msg ${role}">${html}</div>`}
 function renderAsk(){$('#askThread').innerHTML=askHistory.length?askHistory.map(m=>askBubble(m.role,m.html)).join(''):empty('Ask about your own history — "what was I working on yesterday", "what\'s blocked on Project Atlas", "when did I last touch the auth bug".');$('#askThread').scrollTop=$('#askThread').scrollHeight}
 function modal(type, project=null, context={}){
@@ -303,4 +306,13 @@ $('#askForm').addEventListener('submit',async e=>{
 load();setInterval(load,15000);
 // Workstation tools (Brands, and later Studio/Voice) log into WorkLens's activity table; they fire
 // this event after a change so the Timeline and Today stats refresh now, not at the next 15s tick.
+function renderWorkstation(ws){
+  const el=$('#workstationToday'); if(!el||!ws)return;
+  const max=Math.max(1,...ws.tools.map(t=>t.seconds));
+  const tools=ws.tools.length?ws.tools.map(t=>`<div class="ws-tool"><span>${esc(t.tool)}</span><div class="ws-bar"><i style="width:${Math.max(4,Math.round(t.seconds/max*100))}%"></i></div><strong class="mono">${duration(t.seconds)}</strong></div>`).join(''):`<div class="empty">${state.recording?'Time in Studio, Voice and Brands shows up here as you work.':'Start recording and time in each tool shows up here.'}</div>`;
+  const counts=[['Exports',ws.exports,'studio'],['Voice lines',ws.voiceLines,'voice'],['Posts logged',ws.posts,'brands']].map(([a,b,v])=>`<button class="ws-count" data-open-tool="${v}"><strong>${b}</strong><span>${a}</span></button>`).join('');
+  el.innerHTML=`<div class="card ws-today"><div class="section-title"><h3>Workstation today</h3><span class="eyebrow">${duration(ws.seconds)} IN TOOLS</span></div><div class="ws-grid"><div class="ws-tools">${tools}</div><div class="ws-counts">${counts}</div></div></div>`;
+}
+document.addEventListener('click',e=>{const b=e.target.closest?.('[data-open-tool]');if(b)document.querySelector(`.nav[data-view="${b.dataset.openTool}"]`)?.click()});
 document.addEventListener('workstation:changed',()=>load().catch(()=>{}));
+reportContext({tool:'today',label:'Today'});

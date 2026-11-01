@@ -1,6 +1,7 @@
 // Workstation · Brands screen — the Brand Command Center inside the workstation, backed by
 // /api/brands. Self-contained (own dialog, own request helper) so it doesn't depend on app.js
 // internals; app.js's show() still owns which view is visible.
+import { reportContext } from '/monitor.js';
 const root = document.querySelector('#brandsRoot');
 const dialog = document.querySelector('#brandDialog');
 const form = document.querySelector('#brandForm');
@@ -38,6 +39,8 @@ export async function loadBrands() {
 function render() {
   const { stats, brands } = data;
   const brand = brands.find(b => b.id === activeId);
+  // Tells WorkLens which brand is open, so time here lands on the brand's linked project.
+  if (document.querySelector('#brands')?.classList.contains('active')) reportContext(brand ? { tool: 'brands', label: `Brand: ${brand.name}`, brandId: brand.id } : { tool: 'brands', label: 'Brands' });
   const pct = stats.accounts ? Math.round(stats.postedToday / stats.accounts * 100) : 0;
   root.innerHTML = `
     <div class="section-head"><div><span class="eyebrow">STUDIO TOOL · BRAND COMMAND CENTER</span><h2>Brands</h2></div>

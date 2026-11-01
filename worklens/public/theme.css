@@ -177,3 +177,20 @@ dialog::backdrop{background:#000b;backdrop-filter:blur(3px)}
   .nav-label,.nav-soon,.nav-group,.monitor-status{display:flex}
   .nav-group{display:block}
 }
+
+/* ---------- Today · Workstation card (phase 5) ---------- */
+#workstationToday:empty{display:none}
+.ws-today{margin:0 0 14px}
+.ws-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px;align-items:center}
+.ws-tools{display:grid;gap:10px}
+.ws-tool{display:grid;grid-template-columns:70px minmax(0,1fr) 52px;align-items:center;gap:10px;font-size:12px;color:var(--text-muted)}
+.ws-tool strong{text-align:right;font-size:11px;color:var(--text)}
+.ws-bar{height:8px;border-radius:99px;background:var(--surface-3);overflow:hidden}
+.ws-bar i{display:block;height:100%;border-radius:99px;background:var(--success)}
+.ws-counts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ws-count{display:grid;gap:4px;text-align:left;padding:12px;background:var(--bg-soft);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text)}
+.ws-count:hover{border-color:var(--border-strong)}
+.ws-count strong{font-size:20px}
+.ws-count span{font-family:var(--font-mono);font-size:9px;letter-spacing:.8px;text-transform:uppercase;color:var(--text-faint)}
+.ws-today .empty{padding:10px 0;text-align:left}
+@media(max-width:900px){.ws-grid{grid-template-columns:1fr}}

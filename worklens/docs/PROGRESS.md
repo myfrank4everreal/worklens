@@ -8,6 +8,141 @@ from this session's project memory.
 
 ---
 
+## 2026-11-01 — Workstation phase 6: VoiceStudio connector
+
+**Files touched:** `src/media/voicestudio.js` (new), `src/media/api.js`, `src/db.js`
+(`voice_profiles.model`, `voice_clips.engine`), `public/voice.js`, `public/voice.css`, `package.json`.
+
+**Why:** Kokoro covers stock voices. VoiceStudio is the app for cloned or designed voices.
+Characters can now use either engine from the same Voice screen, and VoiceStudio lines land in the
+same library, Studio and timeline as Kokoro lines.
+
+**How it works:**
+- VoiceStudio runs as its own app with a local OpenAI-compatible API, so WorkLens talks to it over HTTP
+  instead of bundling it: `GET /v1/audio/voices`, `GET /v1/models`, and `POST /v1/audio/speech` with
+  `response_format: 'wav'`. The default address is `http://127.0.0.1:3900` (from VoiceStudio's own
+  `config/app.json`). It can be changed on the Voice screen or with `WORKLENS_VOICESTUDIO_URL`.
+- **Local only:** the address must be 127.0.0.1, localhost or ::1, over http(s), so script text never
+  leaves the machine. VoiceStudio trusts loopback callers. `WORKLENS_VOICESTUDIO_KEY` is sent as a
+  bearer token if a setup needs one.
+- **Errors:** "not running" points to finishing VoiceStudio's local runtime setup. A 401 or 403 adds a
+  note to accept the model licence in VoiceStudio's Model Manager. VoiceStudio's own message is passed
+  through. Status is never cached, because VoiceStudio is started and stopped separately.
+- **Voice screen:** two engine chips, a VoiceStudio card (status, address, "Check again", licence
+  note), an Engine choice for custom lines and in the character dialog, and an optional VoiceStudio
+  model per character. A saved VoiceStudio voice stays selectable while the app is closed, and Generate
+  is disabled until it's back. Compare voices stays Kokoro-only. Clips and log lines name the engine.
+
+**Licensing note shown in the app:** the VoiceStudio app is AGPL, each model has its own terms, and its
+default OmniVoice model is non-commercial. Clone a voice only with that person's permission.
+
+**State on this machine:** VoiceStudio is installed (`%LOCALAPPDATA%\Programs\VoiceStudio`) and its
+window runs, but its **local runtime was never set up**. Nothing listens on :3900, and its window
+process (:51199) answers 403 to everything. So the connector shows "VoiceStudio offline" until the
+runtime is installed inside VoiceStudio.
+
+**Tested** on a copy of the data (port 4400) against a stand-in for VoiceStudio's API on 127.0.0.1:3911,
+written from VoiceStudio's `openai_compat.py` routes:
+- Offline message at :3900. `http://example.com:3900` and `file:///` addresses were refused.
+- Connecting through "Check again" updated the chip and the card (1 profile, 3 models).
+- A character created with engine VoiceStudio, voice `vp_frank01` and model `omnivoice` generated a
+  5.4s line. The stand-in received `{model:'omnivoice', voice:'vp_frank01', response_format:'wav'}`,
+  and the clip and log say VoiceStudio.
+- A 403 licence error came through readably.
+- With the stand-in stopped, the VoiceStudio character's Generate was disabled, and an API call
+  returned the "not running" message.
+- Kokoro still generated (2.9s line). No horizontal overflow at 375px.
+
+**Not verified:** real speech from VoiceStudio, which needs its runtime and a model.
+
+---
+
+## 2026-11-01 — Workstation phase 5: monitoring integration
+
+**Files touched:** `src/workstation.js`, `public/monitor.js` (new), `src/server.js` (capture hook,
+route, dashboard field), `src/db.js` (`studio_projects.brand_id`), `src/media/api.js` (brand link,
+export logged to a project), `public/app.js` (view reports, Today card), `public/studio.js`,
+`public/voice.js`, `public/brands.js`, `public/theme.css`, `public/index.html`, `package.json`.
+
+**Why:** before this, every minute inside the workstation window was captured as one generic
+"WorkLens" window with no project. Now WorkLens records which tool you were in, what you were working
+on, and which project it belongs to.
+
+**How it works:**
+- Each screen calls `reportContext()` (`public/monitor.js`). It sets the window title to
+  `<label> · Workstation` and posts `{tool, label, brandId | studioProjectId}` to
+  `/api/workstation/context`, debounced 300 ms, with a re-post every 5 minutes while the page is
+  visible. Labels: `Editing "<project>" · <brand>`, `Voice lines for <character>`,
+  `Brand: <name>`, or the WorkLens screen name.
+- `capture()` asks `workstationCapture(app, title)` first. If the front window is the workstation
+  (a title ending in `· Workstation`, or WorkLens/electron with "Workstation" in the title), the
+  activity is stored as `Workstation · Studio|Voice|Brands|WorkLens` with the reported label, source
+  `workstation`. The context expires after 30 minutes. Sensitive-title redaction and idle detection
+  still run first.
+- **Project attribution:** brand → its linked WorkLens project. A Studio project now has a Brand
+  picker (Project panel), so editing time *and* "Rendered video" log entries land on that brand's
+  project. The panel says when the brand isn't linked yet.
+- **Today → "Workstation today" card:** time per tool (bars), plus counts of exports, voice lines and
+  posts logged today. Each count opens its tool. The data comes from `dashboard().workstation`
+  (also available at `/api/workstation/summary`).
+
+**Tested** on a copy of the data (port 4399):
+- Unit checks of `workstationCapture`: a non-workstation window → null. Studio with a linked brand →
+  `Workstation · Studio`, project 1, confidence 1. Brands → same project. Today → `Workstation ·
+  WorkLens`, no project.
+- In the browser: window titles followed every screen (`Editing "Phase 4 test reel" · Tees Inspired ·
+  Workstation`, `Voice lines for Frank Madu · Workstation`, `Brand: Tees Inspired · Workstation`), and
+  the server context matched. Changing the Studio brand updated the title and the hint.
+- An export with `studioProjectId` was logged to project 1. The Today card rendered tool time and
+  counts. No horizontal overflow at 375px.
+
+**Not verified:** a real foreground capture of the Electron window. The test machine's foreground
+window was the Claude app, so detection was exercised through the unit checks above. The Voice label
+appears only after Kokoro's first voice list loads (~11s on a cold start).
+
+---
+
+## 2026-11-01 — Workstation phase 4: Studio, the video editor
+
+**Files touched:** `public/studio.js`, `public/studio.css` (new), `public/index.html`, `src/db.js`
+(`studio_projects` table), `src/media/api.js` (`/api/media/projects` routes; `folder=frames` on upload).
+
+**Why:** the editor on top of the phase 3 render engine: merge clips, add a voice line, images and
+captions, and export a finished 9:16 reel without leaving the workstation.
+
+**What it does:**
+- **One video track** of clips and stills, plus an optional end card that fades in. Drag a block to
+  reorder it, drag its edges to trim, or split at the playhead (S). Stills get a length on screen.
+- **Captions** are drawn to a full-frame 1080×1920 PNG in the browser (Inter 800, dark rounded box,
+  top / center / bottom, three sizes). The same image is used in the preview and in the export, so the
+  preview shows exactly what gets rendered. Export uploads them to `media/frames/`, and the Media list hides them.
+- **Audio rows**, one per voice line or music file: move, trim, volume up to 200%. The clips' own
+  sound can be kept or muted and has its own volume.
+- **Live preview** in the page: one `<video>`, one `<img>`, the caption layer and an `Audio()` per
+  row, all driven from a single clock and re-synced whenever they drift more than 0.3s. Space plays,
+  arrow keys nudge, Delete removes the selected block.
+- **Brand 9:16 preset** adds a hook caption (0–3s, top, large) and picks an end card from the
+  images (`end|card|crest|logo|cta` in the name first).
+- **Projects autosave** (700 ms debounce, flushed when the page closes) to `studio_projects`; switch,
+  create or delete them from the header. Deleting a project keeps its media and exports.
+- **Exports** list with live progress, cancel, in-page playback, "Save as…" and delete. Each finished
+  export is logged to the WorkLens timeline (by the phase 3 engine) and shows up in Media, so it can
+  go back into another edit. **Save last frame** on a clip gives the start image for the next AI clip.
+
+**Tested** on a copy of the data (port 4398, never the real DB): added two clips, the preset (hook
+and end card), a Frank Madu voice line, split a clip at 3s, dragged a caption edge (3.0→5.0s),
+dragged a clip to the front, then reloaded. Order, trims and the title all came back. Preview
+playback kept the video within 0.15s of the clock, and the caption showed at 0.5s. Exported 14.9s at
+1080×1920 H.264 + AAC in 37s on this laptop. Frames checked: hook caption over the clip, the split
+clip, and the end card. "Rendered video" was logged to the timeline. At 375px the page has no
+horizontal overflow (only the timeline scrolls sideways).
+
+**Not done:** transitions between clips (only the end card fades), music ducking under voice, and
+multiple video tracks (picture-in-picture). Media names saved before this change keep their old
+timestamped names.
+
+---
+
 ## 2026-11-01 — Workstation phase 3: media engine (ffmpeg render jobs) and the Voice tool
 
 **Files touched:** `src/media/ffmpeg.js`, `src/media/render.js`, `src/media/voice.js`,
