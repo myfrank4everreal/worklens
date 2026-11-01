@@ -158,6 +158,48 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+  -- Workstation · TestLoop: Google Play closed-testing campaigns. The cloud Telegram bot owns
+  -- tester onboarding; rows it reported carry its id in remote_id so a sync updates them in place.
+  CREATE TABLE IF NOT EXISTS testloop_apps (
+    id INTEGER PRIMARY KEY,
+    slug TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    play_link TEXT NOT NULL DEFAULT '',
+    target_testers INTEGER NOT NULL DEFAULT 20,
+    days_required INTEGER NOT NULL DEFAULT 14,
+    project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS testloop_testers (
+    id INTEGER PRIMARY KEY,
+    app_id INTEGER NOT NULL REFERENCES testloop_apps(id) ON DELETE CASCADE,
+    remote_id TEXT UNIQUE,
+    name TEXT NOT NULL DEFAULT '',
+    username TEXT NOT NULL DEFAULT '',
+    gmail TEXT NOT NULL,
+    telegram_id TEXT NOT NULL DEFAULT '',
+    device TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'pending',
+    strikes INTEGER NOT NULL DEFAULT 0,
+    started_on TEXT,
+    ai_reason TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL DEFAULT 'manual',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(app_id, gmail)
+  );
+  CREATE TABLE IF NOT EXISTS testloop_feedback (
+    id INTEGER PRIMARY KEY,
+    app_id INTEGER NOT NULL REFERENCES testloop_apps(id) ON DELETE CASCADE,
+    tester_id INTEGER REFERENCES testloop_testers(id) ON DELETE SET NULL,
+    remote_id TEXT UNIQUE,
+    text TEXT NOT NULL,
+    score INTEGER,
+    summary TEXT NOT NULL DEFAULT '',
+    tag TEXT NOT NULL DEFAULT 'Other',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS testloop_testers_app ON testloop_testers(app_id, status);
+  CREATE INDEX IF NOT EXISTS testloop_feedback_app ON testloop_feedback(app_id, created_at);
 `);
 
 for (const statement of [

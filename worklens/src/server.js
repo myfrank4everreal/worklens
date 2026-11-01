@@ -12,6 +12,7 @@ import { rollupEpisodes, embedPendingEpisodes, searchEpisodes } from './episodes
 import { renderTextPdf } from './pdf.js';
 import { parsePlainTextPlan } from './plan-parser.js';
 import { brandsApi, seedBrands } from './brands.js';
+import { testloopApi, seedTestloop, startTestloopSync } from './testloop.js';
 import { mediaApi, seedVoiceProfiles } from './media/api.js';
 import { workstationApi, workstationCapture, workstationSummary } from './workstation.js';
 
@@ -482,6 +483,7 @@ async function api(req, res, url) {
     return json(res, 200, { accepted }, extensionHeaders);
   }
   if (await brandsApi(req, res, url, { json, body }) !== false) return;
+  if (await testloopApi(req, res, url, { json, body }) !== false) return;
   if (await mediaApi(req, res, url, { json, body }) !== false) return;
   if (await workstationApi(req, res, url, { json, body }) !== false) return;
   if (req.method === 'GET' && url.pathname === '/api/dashboard') return json(res, 200, dashboard(url.searchParams.get('date') || undefined));
@@ -752,6 +754,8 @@ async function maintainEpisodes() {
 }
 
 seedBrands();
+seedTestloop();
+startTestloopSync();
 seedVoiceProfiles();
 setRecording(getSetting('recording', 'false') === 'true');
 setInterval(checkProjectChanges, 60000);

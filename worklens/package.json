@@ -9,7 +9,7 @@
     "start": "node --env-file-if-exists=.env src/server.js",
     "dev": "node --env-file-if-exists=.env --watch src/server.js",
     "mcp": "node src/mcp-server.js",
-    "check": "node --check src/server.js && node --check src/db.js && node --check src/openrouter.js && node --check src/project-analyzer.js && node --check src/episodes.js && node --check src/pdf.js && node --check src/plan-parser.js && node --check src/mcp-server.js && node --check src/brands.js && node --check src/workstation.js && node --check src/media/ffmpeg.js && node --check src/media/render.js && node --check src/media/voice.js && node --check src/media/api.js && node --check src/media/voicestudio.js",
+    "check": "node --check src/server.js && node --check src/db.js && node --check src/openrouter.js && node --check src/project-analyzer.js && node --check src/episodes.js && node --check src/pdf.js && node --check src/plan-parser.js && node --check src/mcp-server.js && node --check src/brands.js && node --check src/testloop.js && node --check src/workstation.js && node --check src/media/ffmpeg.js && node --check src/media/render.js && node --check src/media/voice.js && node --check src/media/api.js && node --check src/media/voicestudio.js",
     "electron:dev": "electron .",
     "dist": "electron-builder --win nsis"
   },

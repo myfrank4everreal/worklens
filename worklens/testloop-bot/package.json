@@ -1,0 +1,16 @@
+{
+  "name": "testloop-bot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TestLoop Telegram bot: closed-testing onboarding, feedback and strikes, synced to WorkLens",
+  "type": "module",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "node --env-file-if-exists=.env --watch bot.js",
+    "check": "node --check bot.js && node --check store.js && node --check telegram.js && node --check ai.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

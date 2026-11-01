@@ -176,3 +176,26 @@ export async function analyzeProjectContext(context) {
   const raw = result.choices?.[0]?.message?.content || '';
   try { return JSON.parse(raw.replace(/^```json\s*|\s*```$/g,'')); } catch { throw new Error('The model returned an invalid project plan. Try analysis again.'); }
 }
+
+// TestLoop: rates one closed-testing feedback note for usefulness. Same prompt the cloud bot uses,
+// so a note scored in WorkLens and one scored over Telegram are comparable.
+export async function scoreTesterFeedback(appName, text) {
+  if (!aiConfigured()) throw new Error('OpenRouter is not configured.');
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'http://localhost:4317', 'X-Title': 'WorkLens TestLoop' },
+    body: JSON.stringify({
+      model: process.env.OPENROUTER_MODEL || 'z-ai/glm-5.3-flash',
+      provider: { zdr: true, data_collection: 'deny' }, temperature: 0.1,
+      messages: [
+        { role: 'system', content: 'Rate tester feedback 1-5 for how useful it is to the developer (5 = specific, reproducible, actionable). Return strict JSON, no fences: {"score":1,"summary":"one short sentence","tag":"Bug|Feature|UX|Praise|Other"}' },
+        { role: 'user', content: `App: ${appName}\nFeedback: ${String(text).slice(0, 4000)}` }
+      ]
+    })
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(`Feedback scoring failed (${response.status}): ${result?.error?.message || response.statusText}`);
+  recordUsage('TestLoop feedback score', result, true);
+  const raw = result.choices?.[0]?.message?.content || '';
+  return JSON.parse(raw.replace(/^```json\s*|\s*```$/g, ''));
+}
