@@ -14,6 +14,7 @@ import { parsePlainTextPlan } from './plan-parser.js';
 import { brandsApi, seedBrands } from './brands.js';
 import { testloopApi, seedTestloop, startTestloopSync } from './testloop.js';
 import { mediaApi, seedVoiceProfiles } from './media/api.js';
+import { enginesApi, stopEngines } from './engines.js';
 import { workstationApi, workstationCapture, workstationSummary } from './workstation.js';
 
 const execFileAsync = promisify(execFile);
@@ -484,6 +485,7 @@ async function api(req, res, url) {
   }
   if (await brandsApi(req, res, url, { json, body }) !== false) return;
   if (await testloopApi(req, res, url, { json, body }) !== false) return;
+  if (await enginesApi(req, res, url, { json, body }) !== false) return;
   if (await mediaApi(req, res, url, { json, body }) !== false) return;
   if (await workstationApi(req, res, url, { json, body }) !== false) return;
   if (req.method === 'GET' && url.pathname === '/api/dashboard') return json(res, 200, dashboard(url.searchParams.get('date') || undefined));
@@ -770,4 +772,5 @@ server.on('error', (error) => {
     console.error('WorkLens server error:', error.message);
   }
 });
+process.on('exit', stopEngines);
 server.listen(port, () => console.log(`WorkLens is running at http://localhost:${port}`));

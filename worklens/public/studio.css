@@ -110,3 +110,32 @@ label.upload-btn:hover{border-color:var(--text-faint)}
   .tl-labels .tl-row{padding-left:8px;font-size:9px}
   .studio-head-actions select{max-width:150px}
 }
+
+/* Timeline pictures, history, guides, engine tag */
+.tl-block.video,.tl-block.image{background-color:#253055}
+.tl-block.has-wave{background:linear-gradient(180deg,#3a3a4c,#2e2e3d)}
+.tl-wave{position:absolute;inset:3px 0;width:100%;height:calc(100% - 6px);pointer-events:none}
+.tl-wave path{stroke:#9fd3ff;stroke-width:1.4;opacity:.75;fill:none}
+.tl-block span,.tl-block small{position:relative;text-shadow:0 1px 3px #000}
+.tl-row.events-row{height:24px;background:repeating-linear-gradient(90deg,transparent 0 39px,#ffffff08 39px 40px)}
+.tl-labels .tl-row.events-row{background:none}
+.tl-ev{position:absolute;top:6px;width:3px;height:12px;margin-left:-1px;border-radius:2px;background:#a78bfa}
+.tl-ev.vo{top:3px;height:18px;width:4px;background:#fafafb}
+.tl-ev.ev-1{background:#2dd4bf}.tl-ev.ev-2{background:#ffb84c}.tl-ev.ev-3{background:#ff7aa2}.tl-ev.ev-4{background:#a3ff6e}.tl-ev.ev-5{background:#7aa7ff}
+.tl-history{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:-4px 0 10px;font-size:11px;color:var(--text-muted);min-height:20px}
+.tl-history i{color:var(--text-faint);font-style:normal}
+.hist-step{padding:2px 8px;border-radius:99px;background:var(--surface-2);white-space:nowrap}
+.hist-step.last{background:var(--text);color:var(--bg)}
+.hist-step small{opacity:.6;font-family:var(--font-mono);font-size:9px}
+.hist-empty{color:var(--text-faint)}
+.stage-guides{position:absolute;inset:0;pointer-events:none}
+.stage-guides i{position:absolute;background:#ff5a5a2e;border:1px dashed #ff5a5a99}
+.stage-guides .g-top{left:0;right:0;top:0;height:6.5%}
+.stage-guides .g-bottom{left:0;right:0;bottom:0;height:15.6%;display:grid;place-items:center}
+.stage-guides .g-bottom span{font-size:10px;color:#fff;font-style:normal;text-shadow:0 1px 2px #000}
+.stage-guides .g-right{right:0;top:42%;bottom:15.6%;width:12%}
+.transport button.active{background:var(--text);color:var(--bg)}
+.engine-tag{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);margin:0 0 6px}
+.engine-tag.eng-lemo{--eng:#a78bfa;--eng-soft:#a78bfa1f}.engine-tag.eng-mpt{--eng:#2dd4bf;--eng-soft:#2dd4bf1f}
+.transport [data-st-act=guides]{padding:6px 10px;font-size:11px}
+.transport .mono{white-space:nowrap}

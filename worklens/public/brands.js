@@ -85,7 +85,8 @@ function brandPanel(b) {
         <div class="brand-mini"><div><span class="eyebrow">POSTED TODAY</span><strong class="${posted ? 'ok' : ''}">${posted} account${posted === 1 ? '' : 's'}</strong></div><div><span class="eyebrow">NEEDS POST</span><strong class="${needs ? 'warn' : ''}">${needs} pending</strong></div></div>
       </div>
     </div>
-    ${b.accounts.length ? platforms.map(p => platformGroup(p, b.accounts.filter(a => a.platform === p))).join('') : `<div class="card empty">No accounts on this brand yet. <button class="link-btn" data-brand-act="add-account">Add one</button></div>`}`;
+    ${b.accounts.length ? platforms.map(p => platformGroup(p, b.accounts.filter(a => a.platform === p))).join('') : `<div class="card empty">No accounts on this brand yet. <button class="link-btn" data-brand-act="add-account">Add one</button></div>`}
+    <div data-brand-videos="${b.id}" style="--brand:${esc(b.color)}"></div>`;
 }
 
 function platformGroup(platform, accounts) {

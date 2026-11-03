@@ -19,6 +19,10 @@ let saveTimer = null, pollTimer = null, exporting = false, onSubmit = null;
 let videoEl, imgEl, capEl;
 const audioEls = new Map();
 const captionCache = new Map();
+// Timeline pictures (frame strips, waveforms, a lemo film's events) and the edit history.
+const peaksCache = new Map(), eventsCache = new Map();
+let past = [], future = [], lastSnap = '', pendingOpen = null, guides = false;
+const ENGINE_NAME = { lemo: 'Lemo-Opuscar · code-made', mpt: 'MoneyPrinterTurbo · stock footage' };
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 function toast(text) { const el = document.querySelector('#toast'); el.textContent = text; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2400); }
@@ -68,7 +72,9 @@ export async function loadStudio() {
     await document.fonts.load('800 76px Inter').catch(() => {});
     const [p, lib, r, b] = await Promise.all([request('/api/media/projects'), request('/api/media/library'), request('/api/media/renders'), request('/api/brands').catch(() => ({ brands: [] }))]);
     projects = p.projects; library = lib.items; renders = r.renders; brands = b.brands;
-    if (!project) { if (projects[0]) await openProject(projects[0].id); else await newProject(); }
+    if (pendingOpen && projects.some(p => p.id === pendingOpen)) { await saveNow().catch(() => {}); await openProject(pendingOpen); }
+    else if (!project) { if (projects[0]) await openProject(projects[0].id); else await newProject(); }
+    pendingOpen = null;
     renderAll(); poll(); report();
   } catch (error) { toast(`Couldn't load Studio: ${error.message}`); }
 }
@@ -77,7 +83,7 @@ async function openProject(id) {
   pause();
   const row = await request(`/api/media/projects/${id}`);
   project = { id: row.id, title: row.title, brandId: row.brand_id || null, timeline: { ...blank(), ...row.timeline } };
-  t = 0; selected = null; report();
+  t = 0; selected = null; past = []; future = []; lastSnap = JSON.stringify(project.timeline); report();
 }
 async function newProject() {
   const { id } = await request('/api/media/projects', { method: 'POST', body: JSON.stringify({ title: 'Untitled video', timeline: blank() }) });
@@ -126,8 +132,8 @@ function shell() {
         <span class="save-state mono" data-save-state></span><button class="primary" data-st-act="export">Export video</button></div></div>
     <div class="studio-top">
       <div class="card studio-preview">
-        <div class="stage" data-stage><video playsinline preload="auto"></video><img class="stage-img" alt=""><div class="stage-captions"></div><div class="stage-empty">Add a clip from Media to start</div></div>
-        <div class="transport"><button class="primary" data-st-act="play" title="Play / pause (Space)">▶</button><span class="mono" data-time>0:00.0 / 0:00.0</span><span class="eyebrow">1080×1920</span></div>
+        <div class="stage" data-stage><video playsinline preload="auto"></video><img class="stage-img" alt=""><div class="stage-captions"></div><div class="stage-empty">Add a clip from Media to start</div><div class="stage-guides" hidden><i class="g-top"></i><i class="g-bottom"><span>Platform buttons &amp; caption</span></i><i class="g-right"></i></div></div>
+        <div class="transport"><button class="primary" data-st-act="play" title="Play / pause (Space)">▶</button><span class="mono" data-time>0:00.0 / 0:00.0</span><button data-st-act="guides" title="Show where Instagram/TikTok UI covers the frame">Guides</button><span class="eyebrow">1080×1920</span></div>
       </div>
       <div class="card studio-inspector" data-inspector></div>
       <div class="card studio-library" data-drop>
@@ -142,9 +148,11 @@ function shell() {
         <button data-st-act="split" title="Split the clip at the playhead (S)">✂ Split</button>
         <button data-st-act="caption">+ Caption</button>
         <button data-st-act="preset" title="Adds a hook caption and an end card">Brand 9:16 preset</button>
+        <button data-st-act="undo" title="Undo (Ctrl+Z)">↶ Undo</button><button data-st-act="redo" title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
         <span class="tl-spacer"></span>
         <span class="eyebrow">ZOOM</span><button data-st-act="zoom-out" title="Zoom out">−</button><button data-st-act="zoom-in" title="Zoom in">+</button>
       </div>
+      <div class="tl-history" data-history></div>
       <div class="tl-body"><div class="tl-labels" data-tl-labels></div><div class="tl-scroll" data-tl-scroll><div class="tl-inner" data-tl></div></div></div>
     </div>
     <div class="card studio-exports"><div class="section-title"><h3>Exports</h3><span class="eyebrow">H.264 · AAC · LOGGED TO WORKLENS</span></div><div data-exports></div></div>`;
@@ -187,7 +195,9 @@ function renderInspector() {
   const images = library.filter(i => kindOf(i) === 'image' && !isCaptionFile(i));
   if (!selected) {
     const end = tl().endCard;
+    const meta = tl().meta;
     el.innerHTML = `<div class="section-title"><h3>Project</h3><span class="eyebrow">${fmt(total())} TOTAL</span></div>
+      ${meta?.engine ? `<p class="engine-tag eng-${meta.engine}"><span class="eng-badge">${meta.engine === 'lemo' ? 'CODE-MADE' : 'STOCK'}</span> ${esc(ENGINE_NAME[meta.engine])}${meta.style ? ` · ${esc(meta.style)}` : ''}</p>` : ''}
       <div class="insp-grid"><div><label>Title</label><input data-p="title" maxlength="120" value="${esc(project.title)}"></div>
         <div><label>Brand</label><select data-p="brand"><option value="">No brand</option>${brands.map(b => `<option value="${b.id}" ${b.id === project.brandId ? 'selected' : ''}>${esc(b.name)}</option>`).join('')}</select></div></div>
       <div class="insp-grid">
@@ -239,22 +249,100 @@ function renderTimeline() {
   let ruler = '';
   for (let s = 0; s * pps < width; s += step) ruler += `<span style="left:${X0 + s * pps}px">${s < 60 ? `${s}s` : fmt(s).replace(/\.0$/, '')}</span>`;
   const sel = (kind, id) => selected?.kind === kind && selected.id === id ? ' sel' : '';
-  const block = (cls, kind, id, start, len, label, sub, dx = 0) =>
-    `<div class="tl-block ${cls}${sel(kind, id)}${dx ? ' dragging' : ''}" data-block="${kind}" data-id="${id}" style="left:${X0 + start * pps + dx}px;width:${Math.max(6, len * pps)}px"><i class="h l" data-handle="l"></i><span>${esc(label)}</span><small>${sub}</small><i class="h r" data-handle="r"></i></div>`;
+  const block = (cls, kind, id, start, len, label, sub, dx = 0, extra = '', inner = '') =>
+    `<div class="tl-block ${cls}${sel(kind, id)}${dx ? ' dragging' : ''}" data-block="${kind}" data-id="${id}" style="left:${X0 + start * pps + dx}px;width:${Math.max(6, len * pps)}px;${extra}">${inner}<i class="h l" data-handle="l"></i><span>${esc(label)}</span><small>${sub}</small><i class="h r" data-handle="r"></i></div>`;
   const video = segs.map(s => {
     const dx = drag?.mode === 'move' && drag.kind === 'clip' && drag.id === s.clip.id ? drag.dx * pps : 0;
     return s.end ? block('end', 'end', 'end', s.start, s.len, 'End card', `${s.len.toFixed(1)}s`)
-      : block(s.clip.kind, 'clip', s.clip.id, s.start, s.len, s.clip.name, `${s.len.toFixed(1)}s`, dx);
+      : block(s.clip.kind, 'clip', s.clip.id, s.start, s.len, s.clip.name, `${s.len.toFixed(1)}s`, dx, clipPicture(s.clip));
   }).join('');
   const captions = tl().captions.map(c => block('caption', 'caption', c.id, c.start, c.end - c.start, c.text || 'Empty caption', `${(c.end - c.start).toFixed(1)}s`)).join('');
-  const audioRows = tl().audio.length ? tl().audio.map(a => `<div class="tl-row audio-row">${block('audio', 'audio', a.id, a.start, audioLen(a), a.name, `${Math.round(a.volume * 100)}%`)}</div>`).join('')
+  const audioRows = tl().audio.length ? tl().audio.map(a => `<div class="tl-row audio-row">${block('audio has-wave', 'audio', a.id, a.start, audioLen(a), a.name, `${Math.round(a.volume * 100)}%`, 0, '', wave(a.src, a.in, a.out ?? a.srcDuration, audioLen(a) * pps, a.volume))}</div>`).join('')
     : '<div class="tl-row audio-row"><span class="tl-hint">Add a voice line or music from Media</span></div>';
   root.querySelector('[data-tl]').innerHTML = `<div class="tl-ruler" data-seek>${ruler}</div>
     <div class="tl-row" data-seek>${video || '<span class="tl-hint">Add clips or images from Media</span>'}</div>
     <div class="tl-row caption-row" data-seek>${captions || '<span class="tl-hint">+ Caption adds text at the playhead</span>'}</div>
-    ${audioRows}<div class="tl-playhead" style="left:${X0 + t * pps}px"></div>`;
+    ${audioRows}${eventsRow()}<div class="tl-playhead" style="left:${X0 + t * pps}px"></div>`;
   root.querySelector('[data-tl]').style.width = `${width}px`;
-  root.querySelector('[data-tl-labels]').innerHTML = `<div class="tl-ruler"></div><div class="tl-row">Video</div><div class="tl-row caption-row">Captions</div>${(tl().audio.length ? tl().audio : [null]).map((a, i) => `<div class="tl-row audio-row">${i ? '' : 'Audio'}</div>`).join('')}`;
+  root.querySelector('[data-tl-labels]').innerHTML = `<div class="tl-ruler"></div><div class="tl-row">Video</div><div class="tl-row caption-row">Captions</div>${(tl().audio.length ? tl().audio : [null]).map((a, i) => `<div class="tl-row audio-row">${i ? '' : 'Audio'}</div>`).join('')}${filmEvents() ? '<div class="tl-row events-row">Events</div>' : ''}`;
+  renderHistory();
+}
+
+// A video clip's block shows its own frames: one strip per source, positioned for the trim.
+function clipPicture(c) {
+  if (c.kind === 'image') return `background-image:linear-gradient(#0006,#0006),url('${mediaUrl(c.src)}');background-size:auto 100%;background-repeat:repeat-x`;
+  const full = c.srcDuration * pps, n = clamp(Math.round(c.srcDuration / 2), 2, 16);
+  return `background-image:linear-gradient(#0008,#0003 40%,#0008),url('/api/engines/strip?path=${encodeURIComponent(c.src)}&n=${n}');background-size:100% 100%,${full}px 100%;background-position:0 0,${-c.in * pps}px 0;background-repeat:no-repeat`;
+}
+// An audio block's waveform, for exactly the trimmed part; peaks load once per file.
+function wave(src, from, to, width, volume) {
+  const pk = peaksCache.get(src);
+  if (!pk) { peaksCache.set(src, 'loading'); request(`/api/engines/peaks?path=${encodeURIComponent(src)}`).then(r => { peaksCache.set(src, r); renderTimeline(); }).catch(() => peaksCache.set(src, 'none')); return ''; }
+  if (typeof pk === 'string') return '';
+  const a = Math.floor(from * pk.rate), b = Math.min(pk.peaks.length, Math.ceil(to * pk.rate)), cols = Math.max(1, Math.min(b - a, Math.floor(width / 2)));
+  let d = '';
+  for (let i = 0; i < cols; i++) {
+    const s = a + Math.floor(i * (b - a) / cols), e = a + Math.floor((i + 1) * (b - a) / cols);
+    let m = 0; for (let k = s; k < Math.max(e, s + 1); k++) m = Math.max(m, pk.peaks[k] || 0);
+    const h = Math.max(.5, Math.min(1, m * volume) * 15); d += `M${i * 2 + 1} ${(16 - h).toFixed(1)}V${(16 + h).toFixed(1)}`;
+  }
+  return `<svg class="tl-wave" viewBox="0 0 ${cols * 2} 32" preserveAspectRatio="none"><path d="${d}"/></svg>`;
+}
+// A Lemo-Opuscar film brought in from Engines keeps its events (voice lines, hits, cues) as a row.
+function filmEvents() {
+  const id = tl().meta?.engine === 'lemo' && tl().meta.filmId; if (!id) return null;
+  const ev = eventsCache.get(id);
+  if (!ev) { eventsCache.set(id, 'loading'); request(`/api/engines/films/${id}/events`).then(r => { eventsCache.set(id, r.events); renderTimeline(); }).catch(() => eventsCache.set(id, [])); return null; }
+  return Array.isArray(ev) && ev.length ? ev : null;
+}
+function eventsRow() {
+  const ev = filmEvents(); if (!ev) return '';
+  const off = tl().clips[0]?.in || 0, types = [...new Set(ev.map(e => e.type))];
+  return `<div class="tl-row events-row">${ev.filter(e => e.t >= off).map(e => `<i class="tl-ev ev-${types.indexOf(e.type) % 6}${e.type === 'vo' ? ' vo' : ''}" style="left:${X0 + (e.t - off) * pps}px" title="${esc(e.type)}${e.id ? ` · ${esc(e.id)}` : ''} @ ${e.t.toFixed(2)}s"></i>`).join('')}</div>`;
+}
+
+// ---------- edit history: every committed change, with undo/redo ----------
+const findById = (list, id) => (list || []).find(x => x.id === id);
+function describe(beforeJson, afterJson) {
+  const a = JSON.parse(beforeJson), b = JSON.parse(afterJson);
+  for (const [key, noun] of [['clips', 'clip'], ['captions', 'caption'], ['audio', 'audio line']]) {
+    const x = a[key] || [], y = b[key] || [];
+    if (y.length > x.length) { const n = y.find(i => !findById(x, i.id)); return `Added ${noun}${n?.name ? ` "${prettyName(n.name)}"` : n?.text ? ` "${n.text.slice(0, 24)}"` : ''}`; }
+    if (y.length < x.length) { const n = x.find(i => !findById(y, i.id)); return `Removed ${noun}${n?.name ? ` "${prettyName(n.name)}"` : ''}`; }
+    if (key === 'clips' && x.map(i => i.id).join() !== y.map(i => i.id).join()) return 'Reordered clips';
+    for (const i of y) {
+      const o = findById(x, i.id); if (!o || JSON.stringify(o) === JSON.stringify(i)) continue;
+      if (o.text !== i.text) return 'Edited caption text';
+      if (o.in !== i.in || o.out !== i.out || o.duration !== i.duration) return `Trimmed ${noun}${i.name ? ` "${prettyName(i.name)}"` : ''}`;
+      if (o.start !== i.start || o.end !== i.end) return `Moved ${noun}`;
+      if (o.volume !== i.volume) return `Changed ${noun} volume`;
+      return `Changed ${noun} ${Object.keys(i).find(k => o[k] !== i[k]) || ''}`.trim();
+    }
+  }
+  if (JSON.stringify(a.endCard) !== JSON.stringify(b.endCard)) return b.endCard ? (a.endCard ? 'Changed end card' : 'Added end card') : 'Removed end card';
+  return 'Edited project';
+}
+function record() {
+  const now = JSON.stringify(tl()); if (now === lastSnap) return;
+  const label = describe(lastSnap, now), top = past[past.length - 1];
+  // Typing or dragging the same thing is one step, not one per keystroke.
+  if (top && top.label === label && Date.now() - top.at < 1500) top.at = Date.now();
+  else { past.push({ snap: lastSnap, label, at: Date.now() }); if (past.length > 60) past.shift(); }
+  future = []; lastSnap = now;
+}
+function travel(from, to) {
+  const step = from.pop(); if (!step) return toast(from === past ? 'Nothing to undo' : 'Nothing to redo');
+  to.push({ snap: lastSnap, label: step.label, at: Date.now() });
+  project.timeline = JSON.parse(step.snap); lastSnap = step.snap; selected = null;
+  renderTimeline(); renderInspector(); syncPreview(); scheduleSave();
+  toast(`${from === past ? 'Undid' : 'Redid'}: ${step.label}`);
+}
+function renderHistory() {
+  const el = root.querySelector('[data-history]'); if (!el) return;
+  root.querySelector('[data-st-act="undo"]').disabled = !past.length; root.querySelector('[data-st-act="redo"]').disabled = !future.length;
+  const ago = ms => ms < 60000 ? 'now' : `${Math.round(ms / 60000)}m`;
+  el.innerHTML = past.length ? `<span class="eyebrow">HISTORY</span>${past.slice(-8).map((h, i, arr) => `<span class="hist-step${i === arr.length - 1 ? ' last' : ''}" title="${new Date(h.at).toLocaleTimeString()}">${esc(h.label)} <small>${ago(Date.now() - h.at)}</small></span>`).join('<i>›</i>')}`
+    : '<span class="eyebrow">HISTORY</span><span class="hist-empty">Edits you make appear here; Ctrl+Z undoes them.</span>';
 }
 
 function renderExports() {
@@ -381,7 +469,7 @@ function pause() {
 function seek(to) { t = clamp(to, 0, total()); if (playing) base = { t, at: performance.now() }; syncPreview(); }
 
 // ---------- editing ----------
-function commit({ inspector = true } = {}) { renderTimeline(); if (inspector) renderInspector(); syncPreview(); scheduleSave(); }
+function commit({ inspector = true } = {}) { record(); renderTimeline(); if (inspector) renderInspector(); syncPreview(); scheduleSave(); }
 
 function normalize(item, kind) {
   if (kind === 'clip' && item.kind === 'video') {
@@ -527,6 +615,9 @@ root.addEventListener('click', async e => {
     });
   }
   if (act === 'play') return playing ? pause() : play();
+  if (act === 'undo') return travel(past, future);
+  if (act === 'redo') return travel(future, past);
+  if (act === 'guides') { guides = !guides; root.querySelector('.stage-guides').hidden = !guides; b.classList.toggle('active', guides); return; }
   if (act === 'export') return exportVideo();
   if (act === 'split') return split();
   if (act === 'caption') return addCaption();
@@ -664,6 +755,7 @@ root.addEventListener('drop', e => {
 document.addEventListener('keydown', e => {
   if (!document.querySelector('#studio')?.classList.contains('active') || !project || dialog.open) return;
   if (e.target.closest('input,textarea,select,[contenteditable]')) return;
+  if ((e.ctrlKey || e.metaKey) && /^[zy]$/i.test(e.key)) { e.preventDefault(); return e.shiftKey || /y/i.test(e.key) ? travel(future, past) : travel(past, future); }
   if (e.code === 'Space') { e.preventDefault(); playing ? pause() : play(); }
   else if (e.key === 'Delete' || e.key === 'Backspace') { if (selected) { e.preventDefault(); removeSelected(); } }
   else if (e.key === 's' || e.key === 'S') split();
@@ -674,5 +766,7 @@ document.addEventListener('click', e => {
   const nav = e.target.closest?.('.nav[data-view]'); if (!nav) return;
   if (nav.dataset.view === 'studio') loadStudio(); else pause();
 });
+// Engines and Brands open a particular project here.
+document.addEventListener('studio:open', e => { pendingOpen = Number(e.detail?.id) || null; if (root.dataset.ready && isActive()) loadStudio(); });
 // A new voice line or export elsewhere in the workstation should show up in Media.
 document.addEventListener('workstation:changed', e => { if (root.dataset.ready && e.detail?.tool !== 'studio') refreshLibrary().catch(() => {}); });

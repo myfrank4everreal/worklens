@@ -5,7 +5,7 @@
 // "WorkLens" window into a tool-level activity, attributed to the brand's linked project.
 import { db } from './db.js';
 
-const TOOLS = { brands: 'Brands', testloop: 'TestLoop', studio: 'Studio', voice: 'Voice' };
+const TOOLS = { brands: 'Brands', testloop: 'TestLoop', studio: 'Studio', voice: 'Voice', engines: 'Engines' };
 // How long a reported context stays trusted. The page re-reports on every view change and every
 // few minutes while open, so an old context means the page has gone.
 const CONTEXT_TTL = 30 * 60 * 1000;

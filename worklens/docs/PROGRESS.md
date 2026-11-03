@@ -902,3 +902,22 @@ your machine:
 - [ ] Click **Weekly review** once you have a few days of history.
 - [ ] Rotate the OpenRouter key that was exposed in `.env.example` (see the top of this file's
       history, or just: Settings → Keys on openrouter.ai) if you haven't already.
+
+## Workstation · Engines, brand videos and Studio timeline pictures
+
+- **Engines** (new nav item, `src/engines.js` + `public/engines.js`): both video engines side by side and
+  kept visibly apart — Lemo-Opuscar's code-made styles (read from `styles/*/style.json`, violet) and
+  MoneyPrinterTurbo's stock-footage video types (teal), with install/key status (never the keys
+  themselves), search, a "making for" brand, and "New video" that opens a tagged Studio project.
+  MPT's web UI can be started from here (WorkLens waits until Streamlit is healthy).
+  Engine folders default to `Documents\socialmedia\AI Video Editor\{lemo-opuscar,MoneyPrinterTurbo}`;
+  change them with `POST /api/engines/paths`.
+- **Film library** (`film_library` table): finished films are found by scanning `lemo/films/<name>/<name>.mp4`
+  and `mpt/storage/tasks/*/final-*.mp4`; each gets a thumbnail, brand, status
+  (idea → script → rendered → checked → posted) and a one-click check (EBU R128 loudness + black and
+  white blackdetect). A pass at −14 ±1 LUFS with no black/white frames moves it to Checked.
+- **Brands → Videos**: a status board per brand under its accounts, plus the brand's Studio projects.
+- **Studio**: clip blocks show their own frames (ffmpeg strip, positioned for the trim), audio blocks a
+  waveform of the trimmed part, lemo films an Events row from their `events.json`; an edit history with
+  undo/redo (buttons, Ctrl+Z / Ctrl+Shift+Z) and platform safe-zone guides on the preview.
+- Tested against a copy of the live database on a second port (`WORKLENS_PORT=4399`).

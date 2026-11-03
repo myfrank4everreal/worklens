@@ -44,7 +44,7 @@ function log(title) {
     .run(new Date().toISOString(), title.app, title.text.slice(0, 500), title.projectId || null, 0, title.projectId ? 1 : 0, 'workstation');
 }
 
-function sendFile(req, res, file) {
+export function sendFile(req, res, file) {
   const stat = fs.statSync(file);
   const type = TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream';
   const range = req.headers.range?.match(/bytes=(\d*)-(\d*)/);
