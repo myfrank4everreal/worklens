@@ -182,6 +182,58 @@ If WorkLens is running on a non-default port, set `WORKLENS_PORT` in that same c
 quick manual sanity check: `npm run mcp` starts the server and prints "WorkLens MCP server ready"
 to stderr once it can reach WorkLens.
 
+## Workstation · Engines
+
+The **Engines** screen (Studio tools) shows every way the workstation can make a video. The two
+engines sit side by side but stay visibly separate: violet for code-made films, teal for stock
+footage.
+
+- **Lemo-Opuscar** (code-made): all styles read from `styles/*/style.json`, grouped by category,
+  with poster, typical uses and which of your films already use each style.
+- **MoneyPrinterTurbo** (stock footage): its video types (topic → short, your script → short, your
+  clips → narrated short, batch, landscape/square). It also shows whether it's installed and whether a
+  Pexels/Pixabay key is set. The key itself is never sent to the page. **Start web UI** launches its
+  Streamlit app on `127.0.0.1:8501` and opens it once it's healthy.
+- **Making for** picks a brand; **New video** creates a Studio project tagged with engine + style.
+
+Engine folders default to `Documents\socialmedia\AI Video Editor\lemo-opuscar` and
+`…\MoneyPrinterTurbo`. To point elsewhere:
+`POST /api/engines/paths {"lemo": "D:\\…\\lemo-opuscar", "mpt": "D:\\…\\MoneyPrinterTurbo"}`.
+
+### Film library and brand videos
+
+Finished films are found by scanning `<lemo>/films/<name>/<name>.mp4` and
+`<mpt>/storage/tasks/<id>/final-*.mp4`. A lemo film's style is read from the `Style:` line at the
+top of its `TREATMENT.md`. Each film card has:
+
+- a thumbnail, duration and engine badge, plus a play link
+- a **status** (idea → script → rendered → checked → posted; Posted records the date) and a **brand**
+- **Run checks**: EBU R128 loudness plus black and white frame detection (ffmpeg `blackdetect`, and
+  `negate,blackdetect` for white). A result of −14 ±1 LUFS with no black or white frames moves the
+  film to Checked. If a film is re-rendered, its old check result is cleared.
+- **Edit in Studio**: opens the film as a new Studio project for that brand
+
+What WorkLens knows about each film is stored in the `film_library` table, keyed by the file
+path. The engines' own folders are never written to. **Brands** shows a **Videos** board under
+each brand's accounts, with that brand's films by status and its open Studio projects.
+
+### Studio timeline
+
+- Video blocks show the clip's own frames (an ffmpeg frame strip, positioned to match the trim).
+  Audio blocks show a waveform of the trimmed part, scaled by volume.
+- Films brought in from Lemo-Opuscar get an **Events** row from their `events.json`, showing voice
+  lines and sound cues. Hover a tick to see its type and time.
+- **Edit history**: each change is listed by name (Added caption, Trimmed clip…). Undo and Redo
+  work with the buttons or Ctrl+Z / Ctrl+Shift+Z. Typing or dragging the same thing counts as
+  one step. History resets when you switch project.
+- **Guides** shades the parts of the 9:16 frame that Instagram and TikTok cover with their buttons
+  and captions.
+
+Endpoints: `GET /api/engines`, `GET /api/engines/films`,
+`PATCH|POST /api/engines/films/:id[/check|/studio]`, `GET /api/engines/films/:id/{file,thumb,events}`,
+`GET /api/engines/poster?slug=`, `POST /api/engines/new-project`, `POST /api/engines/mpt/start`,
+`GET /api/engines/strip?path=&n=`, `GET /api/engines/peaks?path=`.
+
 ## Privacy defaults
 
 - Recording is opt-in and visibly indicated.
