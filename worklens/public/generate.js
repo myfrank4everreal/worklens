@@ -246,6 +246,10 @@ function onInput(e) {
   requote();
 }
 
+// Content → "Generate in Studio": start the Clip tab from a content item's prompt. Nothing is
+// submitted; the person still reviews the cost and confirms.
+export function usePrompt(text) { mode = 'clip'; form.prompt = String(text || '').slice(0, 4000); if (el && models.length) { render(); requote(); } }
+
 // Studio's selection changes which clip "last frame" means, so re-price when it does.
 export function selectionChanged() { if (el && form.startFrame === LAST_FRAME && mode === 'clip') requote(); }
 export function libraryChanged() { if (el && models.length && !el.contains(document.activeElement)) { const scroll = el.querySelector('.gen-refs')?.scrollTop; render(); if (scroll) el.querySelector('.gen-refs').scrollTop = scroll; } }

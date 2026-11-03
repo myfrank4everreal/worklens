@@ -77,7 +77,28 @@ export function seedBrands() {
   setSetting('brands_seeded', 'true');
 }
 
-function logToWorkLens(account, brand, action) {
+// Second seed: the TikTok and YouTube accounts and the Coded Film brand, added once to existing
+// databases too. Matches brands by name and skips any platform + handle already present, so
+// accounts the person removed or re-added by hand aren't duplicated.
+export function seedBrandAccounts() {
+  if (getSetting('brand_accounts_seeded_v2') === 'true') return;
+  const seed = [
+    ['Tees Inspired', '#FF6B35', 'Streetwear & culture brand. Main IG + Threads hub.', [['TikTok', '@teesinspired'], ['IG', '@tees_inspiredworld'], ['YT', '@tees_inspired']]],
+    ['Mafrex AI', '#6366F1', 'AI tools & tutorials. Short-form content priority.', [['IG', '@mafrexai'], ['TikTok', '@mafrexplore'], ['YT', '@mafrexai']]],
+    ['Coded Film', '#8B5CF6', 'Film brand: short films and cinematic clips.', [['TikTok', '@codedfilm'], ['IG', '@codedfilm'], ['YT', '@codedfilm']]]
+  ];
+  const findBrand = db.prepare('SELECT id FROM brands WHERE lower(name)=lower(?)');
+  const hasAccount = db.prepare('SELECT 1 FROM brand_accounts WHERE platform=? AND lower(handle)=lower(?)');
+  const addBrand = db.prepare('INSERT INTO brands(name,color,description,sort) VALUES(?,?,?,(SELECT COALESCE(MAX(sort),-1)+1 FROM brands))');
+  const addAccount = db.prepare('INSERT INTO brand_accounts(brand_id,platform,handle,link) VALUES(?,?,?,?)');
+  for (const [name, color, description, accounts] of seed) {
+    const brandId = findBrand.get(name)?.id ?? Number(addBrand.run(name, color, description).lastInsertRowid);
+    for (const [platform, handle] of accounts) if (!hasAccount.get(platform, handle)) addAccount.run(brandId, platform, handle, defaultLink(platform, handle));
+  }
+  setSetting('brand_accounts_seeded_v2', 'true');
+}
+
+export function logToWorkLens(account, brand, action) {
   const platform = PLATFORMS[account.platform]?.label || account.platform;
   db.prepare('INSERT OR IGNORE INTO activities(captured_at,app_name,window_title,project_id,duration_seconds,confidence,source) VALUES(?,?,?,?,?,?,?)')
     .run(new Date().toISOString(), 'Workstation · Brands', `${action} on ${platform}: ${account.handle} (${brand.name})`, brand.project_id || null, 0, brand.project_id ? 1 : 0, 'workstation');

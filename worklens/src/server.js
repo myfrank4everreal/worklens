@@ -11,7 +11,8 @@ import { inspectProject, collectProject } from './project-analyzer.js';
 import { rollupEpisodes, embedPendingEpisodes, searchEpisodes } from './episodes.js';
 import { renderTextPdf } from './pdf.js';
 import { parsePlainTextPlan } from './plan-parser.js';
-import { brandsApi, seedBrands } from './brands.js';
+import { brandsApi, seedBrandAccounts, seedBrands } from './brands.js';
+import { hubApi, seedHub } from './hub.js';
 import { testloopApi, seedTestloop, startTestloopSync } from './testloop.js';
 import { mediaApi, seedVoiceProfiles, startMediaJobs } from './media/api.js';
 import { enginesApi, stopEngines } from './engines.js';
@@ -488,6 +489,7 @@ async function api(req, res, url) {
   if (await enginesApi(req, res, url, { json, body }) !== false) return;
   if (await mediaApi(req, res, url, { json, body }) !== false) return;
   if (await workstationApi(req, res, url, { json, body }) !== false) return;
+  if (await hubApi(req, res, url, { json, body }) !== false) return;
   if (req.method === 'GET' && url.pathname === '/api/dashboard') return json(res, 200, dashboard(url.searchParams.get('date') || undefined));
   if (req.method === 'POST' && url.pathname === '/api/select-folder') {
     try {
@@ -756,6 +758,8 @@ async function maintainEpisodes() {
 }
 
 seedBrands();
+seedBrandAccounts();
+seedHub();
 seedTestloop();
 startTestloopSync();
 seedVoiceProfiles();

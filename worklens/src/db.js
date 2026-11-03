@@ -175,6 +175,59 @@ db.exec(`
   );
   -- Workstation · TestLoop: Google Play closed-testing campaigns. The cloud Telegram bot owns
   -- tester onboarding; rows it reported carry its id in remote_id so a sync updates them in place.
+  -- Workstation · Content, Sites & stores. A content item is one video moving from idea to posted;
+  -- accounts is a JSON array of brand_accounts ids it's meant for. Sites are the websites the
+  -- person runs; stores are where they sell or host a community. Checks are cached on the row.
+  CREATE TABLE IF NOT EXISTS content_items (
+    id INTEGER PRIMARY KEY,
+    brand_id INTEGER REFERENCES brands(id) ON DELETE SET NULL,
+    title TEXT NOT NULL,
+    stage TEXT NOT NULL DEFAULT 'idea',
+    prompt TEXT NOT NULL DEFAULT '',
+    caption TEXT NOT NULL DEFAULT '',
+    hashtags TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT '',
+    accounts TEXT NOT NULL DEFAULT '[]',
+    media TEXT NOT NULL DEFAULT '',
+    scheduled_at TEXT,
+    posted_at TEXT,
+    post_url TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS content_items_stage ON content_items(stage, scheduled_at);
+  CREATE TABLE IF NOT EXISTS sites (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    url TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT '',
+    brand_id INTEGER REFERENCES brands(id) ON DELETE SET NULL,
+    feed_url TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT '',
+    checked_at TEXT,
+    status INTEGER,
+    response_ms INTEGER,
+    check_error TEXT NOT NULL DEFAULT '',
+    latest_title TEXT NOT NULL DEFAULT '',
+    latest_url TEXT NOT NULL DEFAULT '',
+    latest_at TEXT,
+    pages INTEGER,
+    site_warning TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS stores (
+    id INTEGER PRIMARY KEY,
+    platform TEXT NOT NULL,
+    name TEXT NOT NULL,
+    url TEXT NOT NULL DEFAULT '',
+    kind TEXT NOT NULL DEFAULT 'store',
+    brand_id INTEGER REFERENCES brands(id) ON DELETE SET NULL,
+    metric_label TEXT NOT NULL DEFAULT '',
+    metric_value TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
   CREATE TABLE IF NOT EXISTS testloop_apps (
     id INTEGER PRIMARY KEY,
     slug TEXT NOT NULL UNIQUE,
