@@ -234,6 +234,55 @@ Endpoints: `GET /api/engines`, `GET /api/engines/films`,
 `GET /api/engines/poster?slug=`, `POST /api/engines/new-project`, `POST /api/engines/mpt/start`,
 `GET /api/engines/strip?path=&n=`, `GET /api/engines/peaks?path=`.
 
+## Workstation · Overview, Content, Sites & stores
+
+- **Overview** shows everything on one page: the focus project and last tool used, how many videos
+  are at each stage, what's due to post next (overdue in red), every brand's accounts with
+  followers and last post, the websites, and the stores and communities. Click any account handle
+  to open its **account page**.
+- **Content** has one card per video, from idea to posted: brand, target accounts, AI prompt,
+  video file, caption, hashtags (one per word, de-duplicated), post time and post link. It has
+  **Board** and **Schedule** views. **Generate in Studio** fills Studio's Generate clip panel with
+  the prompt; the person still checks the cost and confirms. **Mark posted** also logs a post on each
+  target account in Brands. **Upload to YouTube** sends an edited video to a connected channel,
+  private or scheduled.
+- **Sites & stores**: websites are checked every 30 minutes for status and response time. The
+  latest post comes from RSS (`/feed`) or else `sitemap.xml`, and a sitemap listing pages on
+  another domain is flagged. Stores and communities (Gumroad, Skool, Shopify, Etsy, Patreon…) each
+  carry a link, a tracked number, notes and how-to tips for that platform.
+
+Endpoints: `GET /api/hub`, `GET|POST /api/content`, `PATCH|DELETE /api/content/:id`,
+`POST /api/content/:id/posted`, `GET|POST /api/sites`, `POST /api/sites/check`,
+`PATCH|DELETE /api/sites/:id`, `GET|POST /api/stores`, `PATCH|DELETE /api/stores/:id`.
+
+## Workstation · Social connections
+
+Performance numbers come from each platform's official API, through a free developer app the
+person creates themselves. The Settings → Social connections card has setup steps for each:
+
+| Platform | How it connects | What WorkLens reads or does |
+|---|---|---|
+| YouTube | Google OAuth (Web client; redirect `http://localhost:4317/api/social/callback/youtube`) | Subscribers, lifetime and 28-day views, watch hours, net subscribers; every upload with privacy, scheduled publish time, views, likes and comments; uploads a Content item (private, or private with `publishAt`) |
+| Instagram | Long-lived token pasted from the Meta app (Instagram API with Instagram Login) | Followers, media count, every post with caption, likes, comments, and views, reach, shares and saves from post insights. The token is renewed before its 60 days run out |
+| TikTok | Login Kit (Desktop) OAuth with PKCE; redirect `…/callback/tiktok` | Followers, likes and video count; the video list with views, likes, comments and shares. Posting stays manual until TikTok's content-posting audit |
+| Gumroad | Access token pasted on the Gumroad row | Products and this month's sales and revenue, written onto the Gumroad row (refunds excluded) |
+
+- Every sync (every 6 hours, or **Sync now**) stores a daily snapshot, so the account page can show
+  a follower trend and the 7-day change. App secrets and tokens are encrypted with Electron
+  `safeStorage` in the desktop app.
+- An expired sign-in shows on the account page with a **Reconnect** button.
+- Google projects that haven't passed YouTube's API audit can only upload private videos.
+- Clicking a link opens it in the default browser, which is also where Google and TikTok sign-in
+  happens.
+
+Endpoints: `GET|PUT /api/social/settings`, `GET /api/social/connections`,
+`POST /api/social/connect/:provider`, `GET /api/social/callback/:provider`,
+`POST /api/social/connections/:id/sync`, `PATCH|DELETE /api/social/connections/:id`,
+`POST /api/social/sync-all`, `GET /api/social/accounts/:accountId`,
+`POST /api/social/youtube/upload`. `GET /api/version` reports which build is answering. The
+desktop app checks it on launch, and if an older copy of WorkLens is still running it says so
+instead of silently showing that copy.
+
 ## Privacy defaults
 
 - Recording is opt-in and visibly indicated.

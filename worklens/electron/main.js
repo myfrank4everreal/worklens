@@ -10,18 +10,50 @@ import { createRequire } from 'node:module';
 // silently resolves to an empty object) — a real CommonJS require(), which Electron's module
 // loader intercepts correctly, is the reliable way to get the API from an ESM main process.
 const require = createRequire(import.meta.url);
-const { app, BrowserWindow, Tray, Menu, nativeImage, dialog, safeStorage } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, dialog, safeStorage, shell } = require('electron');
+const port = process.env.WORKLENS_PORT || 4317;
+const samePath = (a, b) => path.resolve(a || '').toLowerCase() === path.resolve(b || '').toLowerCase();
+
+// What the server already on the port says about itself (null when nothing answers, or when it's
+// a build from before /api/version existed).
+function runningBuild() {
+  return new Promise((resolve) => {
+    const req = http.get(`http://127.0.0.1:${port}/api/version`, (res) => {
+      let text = '';
+      res.on('data', (c) => { text += c; });
+      res.on('end', () => { try { const v = JSON.parse(text); resolve(v.root ? v : { root: '' }); } catch { resolve({ root: '' }); } });
+    });
+    req.on('error', () => resolve(null));
+    req.setTimeout(1500, () => { req.destroy(); resolve(null); });
+  });
+}
+
+// Another copy (an older install, or a dev run from the project folder) already owns the port:
+// this window would show that copy's features, not this build's. Say so instead of hiding it.
+function otherCopyMessage(build) {
+  const where = build.root ? `It's running from:
+${build.root}` : 'It is an older build of WorkLens.';
+  return `Another copy of WorkLens is already running, so this one can't start and you'd be looking at the other copy's features.
+
+${where}
+
+Quit that copy (its tray icon → Quit WorkLens, or end electron.exe / WorkLens.exe in Task Manager), then open WorkLens again.`;
+}
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   // A second launch (e.g. a login-item start racing a manual double-click) should just focus
-  // the window already running the server, not start a second server on the same port/DB.
-  app.quit();
+  // the window already running the server, not start a second server on the same port/DB —
+  // unless the running copy is a different build, which would otherwise hide this one's changes.
+  app.whenReady().then(async () => {
+    const build = await runningBuild();
+    if (build && !samePath(build.root, app.getAppPath())) dialog.showErrorBox('Another WorkLens is running', otherCopyMessage(build));
+    app.quit();
+  });
 } else {
   let mainWindow = null;
   let tray = null;
   let serverStarted = false;
-  const port = process.env.WORKLENS_PORT || 4317;
 
   // Route the server's data at a per-user, update-safe location instead of the install directory
   // (NSIS replaces the install directory's contents on update). The build is unpacked (no asar,
@@ -111,6 +143,12 @@ if (!gotLock) {
         contextIsolation: true
       }
     });
+    // Profile links, site links and the YouTube/TikTok sign-in pages open in the person's own
+    // browser, where they're signed in (Google refuses sign-in inside embedded windows).
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+      if (/^https?:\/\//.test(url) && !url.startsWith(`http://localhost:${port}`)) { shell.openExternal(url); return { action: 'deny' }; }
+      return { action: 'allow' };
+    });
     const url = `http://localhost:${port}`;
     const win = mainWindow;
     for (let attempt = 0; attempt < 20; attempt++) {
@@ -187,6 +225,13 @@ if (!gotLock) {
         fs.mkdirSync(path.dirname(marker), { recursive: true });
         fs.writeFileSync(marker, new Date().toISOString());
       }
+    }
+    const existing = await runningBuild();
+    if (existing && !samePath(existing.root, app.getAppPath())) {
+      dialog.showErrorBox('Another WorkLens is running', otherCopyMessage(existing));
+      app.isQuitting = true;
+      app.quit();
+      return;
     }
     let ok = false;
     try {

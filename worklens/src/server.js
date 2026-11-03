@@ -13,6 +13,7 @@ import { renderTextPdf } from './pdf.js';
 import { parsePlainTextPlan } from './plan-parser.js';
 import { brandsApi, seedBrandAccounts, seedBrands } from './brands.js';
 import { hubApi, seedHub } from './hub.js';
+import { socialApi, startSocialSync } from './social.js';
 import { testloopApi, seedTestloop, startTestloopSync } from './testloop.js';
 import { mediaApi, seedVoiceProfiles, startMediaJobs } from './media/api.js';
 import { enginesApi, stopEngines } from './engines.js';
@@ -25,6 +26,8 @@ const publicDir = path.join(root, 'public');
 // so a packaged run points this at the unpacked copy (see electron/main.js).
 const scriptDir = process.env.WORKLENS_SCRIPT_DIR || path.join(root, 'src');
 const port = Number(process.env.WORKLENS_PORT || 4317);
+const appRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const BUILD = { version: JSON.parse(fs.readFileSync(path.join(appRoot, 'package.json'), 'utf8')).version, root: appRoot, startedAt: new Date().toISOString(), features: ['engines', 'hub', 'content', 'social'] };
 const DEFAULT_SENSITIVE_TERMS = ['password','passcode','secret','token','credential','bank','wallet','checkout','payment','private browsing','incognito'];
 let timer = null;
 let lastActivityId = null;
@@ -484,12 +487,16 @@ async function api(req, res, url) {
     setSetting('extension_last_sync', new Date().toISOString()); setSetting('extension_last_count', accepted);
     return json(res, 200, { accepted }, extensionHeaders);
   }
+  // Which build is answering: the desktop app checks this before trusting a server that's
+  // already on the port, so an old copy left running can't silently serve stale features.
+  if (req.method === 'GET' && url.pathname === '/api/version') return json(res, 200, BUILD);
   if (await brandsApi(req, res, url, { json, body }) !== false) return;
   if (await testloopApi(req, res, url, { json, body }) !== false) return;
   if (await enginesApi(req, res, url, { json, body }) !== false) return;
   if (await mediaApi(req, res, url, { json, body }) !== false) return;
   if (await workstationApi(req, res, url, { json, body }) !== false) return;
   if (await hubApi(req, res, url, { json, body }) !== false) return;
+  if (await socialApi(req, res, url, { json, body }) !== false) return;
   if (req.method === 'GET' && url.pathname === '/api/dashboard') return json(res, 200, dashboard(url.searchParams.get('date') || undefined));
   if (req.method === 'POST' && url.pathname === '/api/select-folder') {
     try {
@@ -760,6 +767,7 @@ async function maintainEpisodes() {
 seedBrands();
 seedBrandAccounts();
 seedHub();
+startSocialSync();
 seedTestloop();
 startTestloopSync();
 seedVoiceProfiles();

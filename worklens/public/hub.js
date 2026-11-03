@@ -61,6 +61,7 @@ function ago(iso) {
   const m = Math.round((Date.now() - Date.parse(iso)) / 60000);
   return m < 1 ? 'just now' : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`;
 }
+const compact = n => n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e4 ? `${(n / 1e3).toFixed(1)}K` : Number(n).toLocaleString();
 function duration(s) { const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h}h ${m}m` : `${m}m`; }
 const tagCount = tags => tags ? tags.split(/\s+/).filter(Boolean).length : 0;
 
@@ -114,7 +115,7 @@ function postRow(i, overdue) {
 
 function brandCard(b) {
   return `<div class="card hub-brand" style="--brand:${esc(b.color)}"><div class="hub-brand-head"><span class="brand-avatar sm">${esc(b.name.slice(0, 1).toUpperCase())}</span><div><strong>${esc(b.name)}</strong><span>${b.inPipeline} in pipeline</span></div></div>
-    ${b.accounts.map(a => `<div class="hub-account"><span class="pf pf-${esc(a.platform)} pf-sm">${esc(PLATFORM_SHORT[a.platform] || a.platform)}</span><a href="${esc(a.link)}" target="_blank" rel="noopener noreferrer">${esc(a.handle)}</a><span class="dot-status ${esc(a.status)}" title="${esc(a.status_label)}"></span><small>${esc(daysAgo(a.last_posted, hub.today))}</small></div>`).join('') || '<div class="empty">No accounts.</div>'}</div>`;
+    ${b.accounts.map(a => `<div class="hub-account"><span class="pf pf-${esc(a.platform)} pf-sm">${esc(PLATFORM_SHORT[a.platform] || a.platform)}</span><button class="hub-handle" data-open-account="${a.id}" title="Performance, posts and schedule">${esc(a.handle)}</button>${a.metrics?.followers != null ? `<b class="hub-followers" title="Followers">${esc(compact(a.metrics.followers))}</b>` : ''}<span class="dot-status ${esc(a.status)}" title="${esc(a.status_label)}"></span><small>${esc(daysAgo(a.last_posted, hub.today))}</small></div>`).join('') || '<div class="empty">No accounts.</div>'}</div>`;
 }
 
 function siteState(s) {
@@ -230,7 +231,7 @@ async function editContent(id, preset = {}) {
     <div class="hub-2col"><div><label>Post time</label><input type="datetime-local" name="scheduledAt" value="${esc(v.scheduled_at || '')}"></div>
       <div><label>Post link <small>(after posting)</small></label><input type="url" name="postUrl" value="${esc(v.post_url)}" placeholder="https://"></div></div>
     <label>Notes</label><textarea name="notes" rows="2" maxlength="2000">${esc(v.notes)}</textarea>
-    <div class="dialog-tools">${v.prompt || !item ? '<button type="button" data-dialog-generate>Generate in Studio</button>' : ''}<button type="button" data-dialog-copy>Copy caption + hashtags</button>${item && item.stage !== 'posted' ? '<button type="button" data-dialog-posted>Mark posted now</button>' : ''}</div>
+    <div class="dialog-tools">${v.prompt || !item ? '<button type="button" data-dialog-generate>Generate in Studio</button>' : ''}<button type="button" data-dialog-copy>Copy caption + hashtags</button>${item && item.stage !== 'posted' ? '<button type="button" data-dialog-posted>Mark posted now</button>' : ''}${item && item.media && /\.(mp4|mov|webm|mkv)$/i.test(item.media) ? '<button type="button" data-dialog-youtube>Upload to YouTube…</button>' : ''}</div>
     ${item ? '<button type="button" class="link-btn danger" data-dialog-delete>Delete this item…</button>' : ''}`,
   item ? 'Save' : 'Add to pipeline', async f => {
     const payload = { ...f, accounts: [...form.querySelectorAll('.acct-group:not([hidden]) input[name=acct]:checked')].map(x => Number(x.value)), brandId: Number(f.brandId) || null };
@@ -292,7 +293,7 @@ function renderPlaces() {
 function storeRowFull(s) {
   const brand = brandOf(s.brand_id);
   return `<div class="place-row">${storeRowSmall(s)}<span class="place-meta">${brand ? esc(brand.name) : ''}${s.updated_at ? ` · updated ${esc(ago(s.updated_at.replace(' ', 'T') + 'Z'))}` : ''}</span>
-    <span class="account-tools"><button class="icon-btn" title="Edit" data-store-edit="${s.id}">✎</button><button class="icon-btn danger" title="Remove" data-store-remove="${s.id}">🗑</button></span>
+    <span class="account-tools">${s.platform === 'Gumroad' ? `<button data-connect-gumroad="${s.id}">${s.connected ? 'Reconnect' : 'Connect'}</button>` : ''}<button class="icon-btn" title="Edit" data-store-edit="${s.id}">✎</button><button class="icon-btn danger" title="Remove" data-store-remove="${s.id}">🗑</button></span>
     ${s.notes ? `<p class="place-notes">${esc(s.notes)}</p>` : ''}
     <details class="place-tips"><summary>How to use ${esc(s.platform)}</summary><ul>${(STORE_TIPS[s.platform] || STORE_TIPS.Other).map(t => `<li>${esc(t)}</li>`).join('')}</ul></details></div>`;
 }
@@ -378,6 +379,10 @@ dialog.addEventListener('click', async e => {
     try { await onSubmit(f()); await markPosted(dialogItem.id); dialog.close(); await refreshAll(); } catch (error) { toast(error.message); }
     return;
   }
+  if (e.target.closest('[data-dialog-youtube]') && dialogItem) {
+    try { await onSubmit(f()); dialog.close(); await refreshAll(); const item = findItem(dialogItem.id) || dialogItem; document.dispatchEvent(new CustomEvent('youtube-upload', { detail: { id: item.id, item } })); } catch (error) { toast(error.message); }
+    return;
+  }
   if (e.target.closest('[data-dialog-delete]') && dialogItem) { const it = dialogItem; return confirmRemove(`"${it.title}"`, `/api/content/${it.id}`); }
 });
 
@@ -411,6 +416,8 @@ document.addEventListener('click', e => {
   if (nav.dataset.view === 'content') loadContent();
   if (nav.dataset.view === 'places') loadPlaces();
 });
+// The account page (social.js) opens a Content item from its lists.
+document.addEventListener('edit-content', e => editContent(e.detail.id).catch(error => toast(error.message)));
 // Sites are re-checked in the background; pick up the fresh result a little later.
 setInterval(() => { if (document.visibilityState === 'visible' && isActive('hub')) loadHub(); }, 60000);
 loadHub();

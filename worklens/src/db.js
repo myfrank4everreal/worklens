@@ -228,6 +228,54 @@ db.exec(`
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+  -- Workstation · Connections: a linked YouTube channel, Instagram or TikTok account (to a
+  -- brand_accounts row) or Gumroad shop (to a stores row). Tokens live encrypted in settings under
+  -- social_tokens_<id>. A snapshot is one row per connection per day, so trends survive; posts are
+  -- the platform's own list (published, scheduled, private) with their counts at last sync.
+  CREATE TABLE IF NOT EXISTS social_connections (
+    id INTEGER PRIMARY KEY,
+    provider TEXT NOT NULL,
+    brand_account_id INTEGER REFERENCES brand_accounts(id) ON DELETE SET NULL,
+    store_id INTEGER REFERENCES stores(id) ON DELETE SET NULL,
+    external_id TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL DEFAULT '',
+    handle TEXT NOT NULL DEFAULT '',
+    avatar TEXT NOT NULL DEFAULT '',
+    expires_at TEXT,
+    status TEXT NOT NULL DEFAULT 'ok',
+    last_sync_at TEXT,
+    last_error TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(provider, external_id)
+  );
+  CREATE TABLE IF NOT EXISTS social_snapshots (
+    connection_id INTEGER NOT NULL REFERENCES social_connections(id) ON DELETE CASCADE,
+    day TEXT NOT NULL,
+    followers INTEGER,
+    views INTEGER,
+    likes INTEGER,
+    posts INTEGER,
+    extra TEXT NOT NULL DEFAULT '{}',
+    PRIMARY KEY(connection_id, day)
+  );
+  CREATE TABLE IF NOT EXISTS social_posts (
+    connection_id INTEGER NOT NULL REFERENCES social_connections(id) ON DELETE CASCADE,
+    external_id TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    caption TEXT NOT NULL DEFAULT '',
+    url TEXT NOT NULL DEFAULT '',
+    thumb TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'published',
+    published_at TEXT,
+    scheduled_at TEXT,
+    views INTEGER,
+    likes INTEGER,
+    comments INTEGER,
+    shares INTEGER,
+    extra TEXT NOT NULL DEFAULT '{}',
+    synced_at TEXT NOT NULL,
+    PRIMARY KEY(connection_id, external_id)
+  );
   CREATE TABLE IF NOT EXISTS testloop_apps (
     id INTEGER PRIMARY KEY,
     slug TEXT NOT NULL UNIQUE,

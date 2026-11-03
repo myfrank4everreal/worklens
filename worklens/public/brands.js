@@ -104,7 +104,7 @@ function accountCard(a) {
       <span class="status-chip ${a.status}">${esc(a.status_label)}</span>
     </div>
     <div class="account-meta"><span>Last post: <strong>${esc(lastPostedText(a))}</strong></span><span>${a.posts_7d}/7 days</span>
-      <span class="account-tools"><button class="icon-btn" title="Edit account" data-account-edit="${a.id}">✎</button><button class="icon-btn danger" title="Remove account" data-account-remove="${a.id}">🗑</button></span></div>
+      <span class="account-tools"><button class="icon-btn" title="Performance, posts and schedule" data-open-account="${a.id}">↗</button><button class="icon-btn" title="Edit account" data-account-edit="${a.id}">✎</button><button class="icon-btn danger" title="Remove account" data-account-remove="${a.id}">🗑</button></span></div>
     ${posted ? `<button class="post-btn done" data-account-undo="${a.id}">✓ Posted today · undo</button>` : `<button class="post-btn" data-account-post="${a.id}">Mark posted today</button>`}
   </div>`;
 }

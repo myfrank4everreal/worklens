@@ -6,6 +6,7 @@
 import { db, getSetting, setSetting } from './db.js';
 import { brandsOverview, localDay, logToWorkLens } from './brands.js';
 import { workstationSummary } from './workstation.js';
+import { accountMetrics } from './social.js';
 
 export const STAGES = {
   idea: 'Idea', prompt: 'Prompt ready', generated: 'Generated', edited: 'Edited', scheduled: 'Scheduled', posted: 'Posted'
@@ -196,7 +197,7 @@ function siteFields(data, current = {}) {
 }
 
 // ---------- Stores ----------
-const listStores = () => db.prepare('SELECT * FROM stores ORDER BY id').all();
+const listStores = () => db.prepare(`SELECT s.*, EXISTS(SELECT 1 FROM social_connections c WHERE c.store_id=s.id) AS connected FROM stores s ORDER BY s.id`).all();
 
 function storeFields(data, current = {}) {
   const platform = data.platform !== undefined ? (STORE_PLATFORMS.includes(data.platform) ? data.platform : 'Other') : current.platform;
@@ -233,6 +234,7 @@ export function hubOverview() {
   const focus = focusId ? db.prepare('SELECT id,name,color FROM projects WHERE id=?').get(focusId) : null;
   const ws = workstationSummary(localDay());
   const brands = brandsOverview();
+  const metrics = accountMetrics();
   const pipelineByBrand = {};
   for (const item of content) if (item.stage !== 'posted' && item.brand_id) pipelineByBrand[item.brand_id] = (pipelineByBrand[item.brand_id] || 0) + 1;
   return {
@@ -249,7 +251,7 @@ export function hubOverview() {
     upcoming: scheduled.filter(i => i.scheduled_at >= now).slice(0, 6),
     videoJobsRunning: db.prepare("SELECT COUNT(*) AS n FROM video_jobs WHERE status NOT IN ('completed','failed','cancelled','expired')").get().n,
     platforms: brands.platforms,
-    brands: brands.brands.map(b => ({ ...b, inPipeline: pipelineByBrand[b.id] || 0 })),
+    brands: brands.brands.map(b => ({ ...b, inPipeline: pipelineByBrand[b.id] || 0, accounts: b.accounts.map(a => ({ ...a, metrics: metrics[a.id] || null })) })),
     stats: brands.stats,
     sites: listSites(),
     stores: listStores()
