@@ -10,7 +10,7 @@ import { createRequire } from 'node:module';
 // silently resolves to an empty object) — a real CommonJS require(), which Electron's module
 // loader intercepts correctly, is the reliable way to get the API from an ESM main process.
 const require = createRequire(import.meta.url);
-const { app, BrowserWindow, Tray, Menu, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, dialog, safeStorage } = require('electron');
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -82,6 +82,10 @@ if (!gotLock) {
     // it needs node:sqlite (Node >=22.5). Running it in Electron's own main-process Node — rather
     // than spawning a separate `node` binary — is what makes the packaged app self-contained:
     // Electron's bundled Node satisfies that requirement, so no external Node install is needed.
+    // The server encrypts the OpenRouter key it stores for Studio's clip generation with this
+    // (Windows DPAPI under the hood); under plain `npm start` it isn't there and the key is kept
+    // as typed.
+    globalThis.worklensSafeStorage = safeStorage;
     const serverEntry = path.join(app.getAppPath(), 'src', 'server.js');
     await import(pathToFileURL(serverEntry).href);
     // Importing the module only runs its top-level code, which calls server.listen() without

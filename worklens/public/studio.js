@@ -4,6 +4,7 @@
 // same timeline to the ffmpeg render engine (src/media/render.js). Self-contained like voice.js and
 // announces changes with the shared `workstation:changed` event.
 import { reportContext } from '/monitor.js';
+import { mountGenerate, selectionChanged, libraryChanged } from '/generate.js';
 const root = document.querySelector('#studioRoot');
 const dialog = document.querySelector('#studioDialog');
 const form = document.querySelector('#studioForm');
@@ -76,6 +77,7 @@ export async function loadStudio() {
     else if (!project) { if (projects[0]) await openProject(projects[0].id); else await newProject(); }
     pendingOpen = null;
     renderAll(); poll(); report();
+    mountGenerate(root.querySelector('[data-generate]'), { library: () => library, selectedClip: () => (selected?.kind === 'clip' ? selectedItem() : null), openDialog, refreshLibrary, addMedia });
   } catch (error) { toast(`Couldn't load Studio: ${error.message}`); }
 }
 
@@ -107,7 +109,7 @@ async function saveNow(keepalive = false) {
 function setSaveState(text) { const el = root.querySelector('[data-save-state]'); if (el) el.textContent = text; }
 window.addEventListener('pagehide', () => { if (saveTimer) saveNow(true); });
 
-async function refreshLibrary() { library = (await request('/api/media/library')).items; renderLibrary(); renderInspector(); }
+async function refreshLibrary() { library = (await request('/api/media/library')).items; renderLibrary(); renderInspector(); libraryChanged(); }
 async function refreshRenders() {
   const before = new Map(renders.map(r => [r.id, r.status]));
   renders = (await request('/api/media/renders')).renders;
@@ -155,6 +157,7 @@ function shell() {
       <div class="tl-history" data-history></div>
       <div class="tl-body"><div class="tl-labels" data-tl-labels></div><div class="tl-scroll" data-tl-scroll><div class="tl-inner" data-tl></div></div></div>
     </div>
+    <div class="card studio-generate" data-generate></div>
     <div class="card studio-exports"><div class="section-title"><h3>Exports</h3><span class="eyebrow">H.264 · AAC · LOGGED TO WORKLENS</span></div><div data-exports></div></div>`;
   videoEl = root.querySelector('.stage video');
   imgEl = root.querySelector('.stage-img');
@@ -189,6 +192,7 @@ function selectedItem() {
 
 const num = (key, value, attrs = '') => `<input type="number" step="0.05" data-f="${key}" value="${Number(value).toFixed(2)}" ${attrs}>`;
 function renderInspector() {
+  selectionChanged();
   const el = root.querySelector('[data-inspector]');
   const item = selectedItem();
   if (!item) selected = null;

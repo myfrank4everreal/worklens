@@ -13,7 +13,7 @@ import { renderTextPdf } from './pdf.js';
 import { parsePlainTextPlan } from './plan-parser.js';
 import { brandsApi, seedBrands } from './brands.js';
 import { testloopApi, seedTestloop, startTestloopSync } from './testloop.js';
-import { mediaApi, seedVoiceProfiles } from './media/api.js';
+import { mediaApi, seedVoiceProfiles, startMediaJobs } from './media/api.js';
 import { enginesApi, stopEngines } from './engines.js';
 import { workstationApi, workstationCapture, workstationSummary } from './workstation.js';
 
@@ -759,6 +759,7 @@ seedBrands();
 seedTestloop();
 startTestloopSync();
 seedVoiceProfiles();
+startMediaJobs();
 setRecording(getSetting('recording', 'false') === 'true');
 setInterval(checkProjectChanges, 60000);
 setInterval(syncAllChecklists, 60000);

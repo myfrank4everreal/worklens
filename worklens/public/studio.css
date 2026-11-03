@@ -139,3 +139,21 @@ label.upload-btn:hover{border-color:var(--text-faint)}
 .engine-tag.eng-lemo{--eng:#a78bfa;--eng-soft:#a78bfa1f}.engine-tag.eng-mpt{--eng:#2dd4bf;--eng-soft:#2dd4bf1f}
 .transport [data-st-act=guides]{padding:6px 10px;font-size:11px}
 .transport .mono{white-space:nowrap}
+
+/* Generate clip (OpenRouter video) */
+.studio-generate{margin-bottom:14px}
+.gen-tabs{margin-bottom:4px}
+.gen-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:0 12px}
+.gen-grid>*{min-width:0}
+.studio-generate label.check-row{display:flex;align-items:center;gap:8px;font-weight:500;font-size:13px;color:var(--text-muted);margin:10px 0 0}
+.gen-refs{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.gen-ref{position:relative;flex:0 0 auto;width:54px;height:72px;margin:0;border:2px solid transparent;border-radius:8px;overflow:hidden;cursor:pointer;background:var(--bg-soft)}
+.gen-ref.on{border-color:var(--text)}
+.gen-ref input{position:absolute;opacity:0;pointer-events:none}
+.gen-ref img{width:100%;height:100%;object-fit:cover;display:block}
+.gen-quote{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0;padding:12px;background:var(--bg-soft);border:1px solid var(--border);border-radius:var(--radius-sm)}
+.gen-quote>div{flex:1;min-width:200px}
+.gen-quote .err,.or-err{color:var(--danger);font-size:12px;margin:6px 0 0}
+#openrouterVideoCard .or-key{display:flex;gap:8px;flex-wrap:wrap}
+#openrouterVideoCard .or-key input{flex:1;min-width:160px}
+#openrouterVideoCard [hidden]{display:none}

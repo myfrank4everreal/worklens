@@ -151,6 +151,21 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     finished_at TEXT
   );
+  CREATE TABLE IF NOT EXISTS video_jobs (
+    id INTEGER PRIMARY KEY,
+    remote_id TEXT NOT NULL DEFAULT '',
+    kind TEXT NOT NULL DEFAULT 'clip',
+    model TEXT NOT NULL,
+    prompt TEXT NOT NULL DEFAULT '',
+    params TEXT NOT NULL DEFAULT '{}',
+    status TEXT NOT NULL DEFAULT 'pending',
+    estimate REAL NOT NULL DEFAULT 0,
+    cost REAL,
+    error TEXT NOT NULL DEFAULT '',
+    file TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    finished_at TEXT
+  );
   CREATE TABLE IF NOT EXISTS studio_projects (
     id INTEGER PRIMARY KEY,
     title TEXT NOT NULL DEFAULT '',

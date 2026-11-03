@@ -12,6 +12,7 @@ import { renderTimeline, lastFrame } from './render.js';
 import { voiceStatus, synthesize, VOICE_LABELS } from './voice.js';
 import { projectForStudioProject } from '../workstation.js';
 import { voiceStudioStatus, voiceStudioSynthesize, setVoiceStudioUrl } from './voicestudio.js';
+import { generateApi, startVideoJobs } from './generate.js';
 
 export const mediaDir = path.join(dataDir, 'media');
 for (const sub of ['uploads', 'voice', 'renders', 'frames']) fs.mkdirSync(path.join(mediaDir, sub), { recursive: true });
@@ -106,8 +107,13 @@ export function seedVoiceProfiles() {
   db.prepare('INSERT INTO voice_profiles(name,voice,speed,notes) VALUES(?,?,?,?)').run('Frank Madu', 'am_onyx', 0.95, 'TeesInspired virtual ambassador: deep, warm, calm American voice.');
 }
 
+export function startMediaJobs() {
+  startVideoJobs({ mediaDir, uploadsDir: path.join(mediaDir, 'uploads'), resolveMedia, rel, urlFor, log });
+}
+
 export async function mediaApi(req, res, url, { json, body }) {
   const p = url.pathname;
+  if (p.startsWith('/api/openrouter') || p.startsWith('/api/media/generate')) return generateApi(req, res, url, { json, body });
   if (!p.startsWith('/api/media') && !p.startsWith('/api/voice')) return false;
 
   // ---------- media ----------
