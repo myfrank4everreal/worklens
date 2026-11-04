@@ -334,7 +334,10 @@ for (const statement of [
   "ALTER TABLE tasks ADD COLUMN milestone_key TEXT NOT NULL DEFAULT ''",
   "ALTER TABLE milestones ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'",
   "ALTER TABLE milestones ADD COLUMN external_key TEXT",
-  "ALTER TABLE tasks ADD COLUMN milestone_id INTEGER REFERENCES milestones(id) ON DELETE SET NULL"
+  "ALTER TABLE tasks ADD COLUMN milestone_id INTEGER REFERENCES milestones(id) ON DELETE SET NULL",
+  "ALTER TABLE content_items ADD COLUMN post_no INTEGER",
+  "ALTER TABLE content_items ADD COLUMN tg_file_id TEXT NOT NULL DEFAULT ''",
+  "ALTER TABLE content_items ADD COLUMN poster_note TEXT NOT NULL DEFAULT ''"
 ]) {
   try { db.exec(statement); } catch (error) { if (!String(error.message).includes('duplicate column')) throw error; }
 }

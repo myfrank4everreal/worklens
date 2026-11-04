@@ -98,7 +98,7 @@ function contentFields(data, current = {}) {
 
 // Posted: stamp it, and log a post today on each account it went to, so Brands' "posted today"
 // and the Timeline agree with the pipeline.
-function markPosted(item) {
+export function markPosted(item) {
   db.prepare("UPDATE content_items SET stage='posted', posted_at=?, updated_at=CURRENT_TIMESTAMP WHERE id=?").run(new Date().toISOString(), item.id);
   const today = localDay();
   for (const accountId of JSON.parse(item.accounts || '[]')) {

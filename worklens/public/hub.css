@@ -122,3 +122,14 @@ small.warn{color:var(--warning)}
   .place-row{grid-template-columns:1fr auto}
   .place-meta{grid-column:1/-1}
 }
+
+/* Posting bot strip (Content) */
+.poster-strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 0; padding: 12px 14px; }
+.poster-strip > div:first-child { display: flex; flex-direction: column; gap: 2px; }
+.poster-strip > div:first-child span { color: var(--muted); font-size: 13px; }
+.poster-form { flex-basis: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; align-items: end; }
+.poster-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.poster-note { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+.poster-cron { grid-column: 1 / -1; }
+.poster-cron span { display: flex; gap: 8px; }
+.poster-cron input { flex: 1; }

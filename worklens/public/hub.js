@@ -31,7 +31,7 @@ const STORE_TIPS = {
 
 let hub = null, content = null, places = null, library = [], brandsData = null;
 let contentMode = (() => { try { return localStorage.getItem('wl-content-mode') || 'board'; } catch { return 'board'; } })();
-let brandFilter = 0, onSubmit = null;
+let brandFilter = 0, onSubmit = null, poster = null, posterOpen = false;
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 function toast(text) { const el = document.querySelector('#toast'); el.textContent = text; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2200); }
@@ -135,8 +135,8 @@ function storeRowSmall(s) {
 // ---------- Content ----------
 export async function loadContent() {
   try {
-    const [c, b] = await Promise.all([request('/api/content'), request('/api/brands')]);
-    content = c; brandsData = b; renderContent();
+    const [c, b, p] = await Promise.all([request('/api/content'), request('/api/brands'), request('/api/poster').catch(() => null)]);
+    content = c; brandsData = b; poster = p; renderContent();
   } catch (error) { contentRoot.innerHTML = `<div class="card empty">Couldn't load content: ${esc(error.message)}</div>`; }
 }
 
@@ -149,7 +149,25 @@ function renderContent() {
     <div class="section-head"><div><span class="eyebrow">STUDIO TOOL · IDEA → POSTED</span><h2>Content</h2></div>
       <div class="brand-actions"><div class="seg"><button class="${contentMode === 'board' ? 'active' : ''}" data-content-mode="board">Board</button><button class="${contentMode === 'schedule' ? 'active' : ''}" data-content-mode="schedule">Schedule</button></div><button class="primary" data-hub-act="new-content">+ New idea</button></div></div>
     <div class="brand-tabs">${chips}</div>
+    ${posterStrip()}
     ${contentMode === 'board' ? board(items) : schedule(items)}`;
+}
+
+// Posting bot: every finished video gets the brand's next slot and is sent to Telegram at that time.
+function posterStrip() {
+  if (!poster) return '';
+  const p = poster, l = p.last || {};
+  const status = !p.configured ? 'Not connected yet: add the bot details to start auto-scheduling.'
+    : l.error ? `Last run failed: ${l.error}` : l.at ? `Auto-scheduling on · slots ${p.slots.join(' & ')} daily · last check ${ago(l.at)}${l.scheduled ? ` · ${l.scheduled} queued` : ''}` : `Auto-scheduling on · slots ${p.slots.join(' & ')} daily`;
+  return `<div class="card poster-strip"><div><strong>📨 Posting bot</strong><span>${esc(status)}</span></div>
+    <div class="brand-actions">${p.configured ? '<button data-poster-run>Run now</button>' : ''}<button data-poster-toggle>${posterOpen ? 'Close' : 'Settings'}</button></div>
+    ${posterOpen ? `<form class="poster-form" data-poster-form>
+      <label>Bot URL<input name="url" placeholder="https://brand-poster.vercel.app" value="${esc(p.url || '')}"></label>
+      <label>Telegram bot token<input name="botToken" type="password" placeholder="${p.hasToken ? 'saved, leave empty to keep' : 'from @BotFather'}"></label>
+      <label>Your Telegram chat id<input name="chatId" placeholder="send /start to the bot to get it" value="${esc(p.chatId || '')}"></label>
+      <label>Bot admin secret<input name="adminSecret" type="password" placeholder="${p.hasSecret ? 'saved, leave empty to keep' : 'ADMIN_SECRET from Vercel'}"></label>
+      <button class="primary" type="submit">Save</button>
+      ${p.cronUrl ? `<label class="poster-cron">cron-job.org address (every 10 minutes)<span><input readonly value="${esc(p.cronUrl)}"><button type="button" data-poster-copy>Copy</button></span></label>` : ''}</form>` : ''}</div>`;
 }
 
 function board(items) {
@@ -171,7 +189,7 @@ function contentCard(i) {
   return `<div class="card content-card ${i.overdue ? 'overdue' : ''}" style="--brand:${esc(brand?.color || 'var(--border-strong)')}">
     <button class="content-open" data-edit-content="${i.id}"><strong>${esc(i.title)}</strong>
       <span>${brand ? esc(brand.name) : 'No brand'}${i.scheduled_at ? ` · ${i.overdue ? 'overdue · ' : ''}${esc(when(i.scheduled_at))}` : ''}${i.posted_at ? ` · posted ${esc(ago(i.posted_at))}` : ''}</span>
-      ${i.caption ? `<p>${esc(i.caption.slice(0, 120))}</p>` : ''}
+      ${i.caption ? `<p>${esc(i.caption.slice(0, 120))}</p>` : ''}${i.poster_note ? `<small class="poster-note">${i.post_no ? `#${String(i.post_no).padStart(3, '0')} · ` : ''}${esc(i.poster_note)}</small>` : ''}
       <span class="hub-badges">${accountBadges(i.accounts)}${i.hashtags ? `<em>${tagCount(i.hashtags)} tags</em>` : ''}${i.media ? '<em>▶ media</em>' : ''}${i.post_url ? '<em>link</em>' : ''}</span></button>
     <div class="content-actions">${action}${nextStage && i.stage !== 'scheduled' ? `<button class="icon-btn" title="Move to ${esc(content.stages[nextStage])}" data-content-next="${i.id}">→</button>` : ''}</div></div>`;
 }
@@ -397,6 +415,9 @@ async function onClick(e) {
     if (t.dataset.contentCopy) return copyCaption(findItem(Number(t.dataset.contentCopy)));
     if (t.dataset.contentPosted) { t.disabled = true; await markPosted(Number(t.dataset.contentPosted)); return refreshAll(); }
     if (t.dataset.contentNext) { t.disabled = true; await moveNext(Number(t.dataset.contentNext)); return refreshAll(); }
+    if (t.dataset.posterCopy !== undefined) { await navigator.clipboard.writeText(poster.cronUrl); return toast('Cron address copied'); }
+    if (t.dataset.posterToggle !== undefined) { posterOpen = !posterOpen; return renderContent(); }
+    if (t.dataset.posterRun !== undefined) { t.disabled = true; t.textContent = 'Running…'; poster.last = await request('/api/poster/run', { method: 'POST', body: '{}' }); toast(poster.last.error || `Done · ${poster.last.scheduled} queued`); return loadContent(); }
     if (t.dataset.contentGenerate) return generateInStudio(findItem(Number(t.dataset.contentGenerate))?.prompt || '');
     if (t.dataset.placesAct === 'add-site') return editSite(null);
     if (t.dataset.placesAct === 'add-store') return editStore(null);
@@ -408,6 +429,13 @@ async function onClick(e) {
   } catch (error) { toast(error.message); t.disabled = false; }
 }
 [hubRoot, contentRoot, placesRoot].forEach(r => r.addEventListener('click', onClick));
+contentRoot.addEventListener('submit', async e => {
+  if (!e.target.matches('[data-poster-form]')) return;
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  try { await request('/api/poster/settings', { method: 'POST', body: JSON.stringify(data) }); posterOpen = false; toast('Posting bot saved'); loadContent(); }
+  catch (error) { toast(error.message); }
+});
 
 // Load whenever a view is opened, so changes made elsewhere (Brands, Studio) show.
 document.addEventListener('click', e => {
