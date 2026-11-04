@@ -255,6 +255,30 @@ Endpoints: `GET /api/hub`, `GET|POST /api/content`, `PATCH|DELETE /api/content/:
 `POST /api/content/:id/posted`, `GET|POST /api/sites`, `POST /api/sites/check`,
 `PATCH|DELETE /api/sites/:id`, `GET|POST /api/stores`, `PATCH|DELETE /api/stores/:id`.
 
+## Workstation · Posting bot (Telegram, runs with the PC off)
+
+Every card that reaches **Edited** with a brand, title, description (the card's caption), hashtags and a
+video under 50 MB is scheduled automatically (`src/poster.js`, every 5 minutes while Workstation runs).
+- **Slots:** the brand's next free **11:00** or **19:00** local time (inside the 10–12 and 16–22 posting
+  windows), at least 20 minutes ahead. Two posts a day per brand.
+- **Serial number:** each brand counts its own posts (`post_no`: Coded Film #001, #002…).
+- **Telegram:** the video is uploaded once to the bot (@Workstation_poster_bot), silently, and its file
+  id is kept (`tg_file_id`). The post is queued on the cloud bot, **brand-poster** on Vercel
+  (`brand-poster/`, https://brand-poster.vercel.app), and the card moves to **Scheduled**.
+- **At post time:** cron-job.org calls the cloud bot every 10 minutes. It sends the video, then the
+  copy-ready text (brand, post number, title, description, hashtags) with a **✅ Mark as posted** button.
+  Tapping it moves the card to **Posted** next time Workstation syncs.
+- **Copy rule:** every description is written from discovery keywords taken from the video itself (the
+  topic, the named things in it, the phrases people search for), and the hashtags are made from those
+  same keywords plus the brand tag.
+- **Setup:** all on free plans (Vercel Hobby with a Blob store, cron-job.org; no trials). The token, chat
+  id and keys are in Vercel env and Workstation settings (`poster_*`); generated keys are in
+  `~/.brand-poster.json`. Content → **📨 Posting bot** shows the status, **Run now**, Settings and the
+  cron URL. See `brand-poster/README.md`.
+
+Endpoints: `GET /api/poster`, `POST /api/poster/settings`, `POST /api/poster/run`,
+`POST /api/poster/webhook`.
+
 ## Workstation · Social connections
 
 Performance numbers come from each platform's official API, through a free developer app the

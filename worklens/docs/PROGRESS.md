@@ -921,3 +921,13 @@ your machine:
   waveform of the trimmed part, lemo films an Events row from their `events.json`; an edit history with
   undo/redo (buttons, Ctrl+Z / Ctrl+Shift+Z) and platform safe-zone guides on the preview.
 - Tested against a copy of the live database on a second port (`WORKLENS_PORT=4399`).
+
+## Workstation · Posting bot
+
+- `src/poster.js` and the Content screen's **📨 Posting bot** strip: it auto-schedules Edited cards at 11:00/19:00 per
+  brand and gives each brand its own post number. New `content_items` columns: `post_no`, `tg_file_id`, `poster_note`.
+- `brand-poster/` (Vercel Hobby project franklymade-hq/brand-poster): the queue is in Vercel Blob,
+  `/api/queue`, `/api/tick` (cron-job.org every 10 minutes), `/api/telegram` (webhook: /start, Mark as posted),
+  `/api/sync` and `/api/health`.
+- Done: deploy, keys, bot token, webhook. Still needed: CHAT_ID (send /start to the bot) and the cron-job.org job.
+- Descriptions are written from keywords taken from each video, to help discovery.

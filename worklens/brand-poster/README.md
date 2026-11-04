@@ -40,3 +40,8 @@ No Upstash and no paid cron.
 `BLOB_READ_WRITE_TOKEN` (added by the Blob store).
 
 Deploy: `npx vercel deploy --prod --scope franklymade-hq` from this folder.
+
+## Copy rule
+
+Every description is written from discovery keywords taken from the video itself: its topic, the named
+things in it, and the phrases people search for. Hashtags come from the same keywords, plus the brand tag.
