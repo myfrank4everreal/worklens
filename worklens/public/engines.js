@@ -61,10 +61,10 @@ function filmCard(f) {
 
 // ---------- Engines page ----------
 function styleCard(engine, s) {
-  const img = engine === 'lemo' && s.poster ? `<img src="/api/engines/poster?slug=${encodeURIComponent(s.slug)}" loading="lazy" alt="">` : `<span class="type-icon">${{ topic: '✦', script: '✎', local: '▤', batch: '⧉', landscape: '▭' }[s.slug] || '▶'}</span>`;
+  const img = engine === 'lemo' && s.poster ? `<img src="/api/engines/poster?slug=${encodeURIComponent(s.slug)}${s.mine ? '&mine=1' : ''}" loading="lazy" alt="">` : `<span class="type-icon">${{ topic: '✦', script: '✎', local: '▤', batch: '⧉', landscape: '▭' }[s.slug] || '▶'}</span>`;
   return `<article class="style-card eng-${engine}">
     <div class="style-poster">${img}</div>
-    <div class="style-body"><strong>${esc(s.name)}</strong><p>${esc(s.line)}</p>
+    <div class="style-body"><strong>${esc(s.name)}${s.mine ? ' <span class="mine-badge">MY STYLE</span>' : ''}</strong>${s.skill ? `<small class="used-by" title="Ask Claude Code to use this skill">Skill: ${esc(s.skill)}</small>` : ''}<p>${esc(s.line)}</p>
       <div class="style-uses">${(s.uses || []).slice(0, 3).map(u => `<span>${esc(u)}</span>`).join('')}</div>
       ${s.usedBy.length ? `<small class="used-by" title="${esc(s.usedBy.join(', '))}">Used by ${s.usedBy.length} film${s.usedBy.length === 1 ? '' : 's'}: ${esc(s.usedBy.slice(0, 2).join(', '))}${s.usedBy.length > 2 ? '…' : ''}</small>` : ''}
       <button data-new-video="${engine}:${esc(s.slug)}" data-style-name="${esc(s.name)}">New video${brandFor ? ' for brand' : ''}</button></div></article>`;
@@ -75,6 +75,8 @@ function render() {
   const lemo = data.lemo, mpt = data.mpt;
   const groups = {};
   for (const s of lemo.styles.filter(matches)) (groups[s.category] ||= []).push(s);
+  // My styles first, then the library's categories.
+  const ordered = Object.entries(groups).sort(([a], [b]) => (b === 'My styles') - (a === 'My styles'));
   const mptTypes = mpt.types.filter(matches);
   const showLemo = engineFilter !== 'mpt', showMpt = engineFilter !== 'lemo';
   const unassigned = films.filter(f => !f.brand_id);
@@ -94,7 +96,7 @@ function render() {
           ${k === 'mpt' && mpt.installed && !mpt.stockKeys.pexels && !mpt.stockKeys.pixabay ? '<small class="warn">Add a free Pexels or Pixabay key in its web UI (Basic settings) before making a video.</small>' : ''}</div>`; }).join('')}
     </div>
     ${showLemo ? `<section class="eng-block eng-lemo"><div class="eng-block-head"><span class="eng-badge">CODE-MADE</span><h3>Lemo-Opuscar styles</h3><span class="eyebrow">${lemo.styles.length} STYLES · ${Object.keys(groups).length} CATEGORIES</span></div>
-      ${Object.entries(groups).map(([cat, list]) => `<h4 class="eng-cat">${esc(cat)} <span>${list.length}</span></h4><div class="style-grid">${list.map(s => styleCard('lemo', s)).join('')}</div>`).join('') || '<div class="empty">No style matches that search.</div>'}</section>` : ''}
+      ${ordered.map(([cat, list]) => `<h4 class="eng-cat">${esc(cat)} <span>${list.length}</span></h4><div class="style-grid">${list.map(s => styleCard('lemo', s)).join('')}</div>`).join('') || '<div class="empty">No style matches that search.</div>'}</section>` : ''}
     ${showMpt ? `<section class="eng-block eng-mpt"><div class="eng-block-head"><span class="eng-badge">STOCK FOOTAGE</span><h3>MoneyPrinterTurbo video types</h3><span class="eyebrow">${mpt.types.length} TYPES</span></div>
       <div class="style-grid">${mptTypes.map(s => styleCard('mpt', s)).join('') || '<div class="empty">No type matches that search.</div>'}</div></section>` : ''}
     <section class="card eng-films"><div class="section-title"><h3>Film library</h3><span class="eyebrow">${films.length} FILMS · ${unassigned.length} WITHOUT A BRAND</span></div>

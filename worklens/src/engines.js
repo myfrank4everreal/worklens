@@ -7,6 +7,7 @@
 // knows about each film (brand, status, checks) lives in its own film_library table.
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import crypto from 'node:crypto';
 import { spawn, execFile } from 'node:child_process';
 import { db, getSetting, setSetting } from './db.js';
@@ -48,12 +49,21 @@ const MPT_TYPES = [
 const idOf = file => crypto.createHash('sha1').update(path.normalize(file).toLowerCase()).digest('hex').slice(0, 12);
 const readJson = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
 
+// The user's own lemo styles (lemo-opuscar MY-STYLES.md): ~/lemo-my-styles/<slug>/style.json, listed first.
+const myStylesDir = () => getSetting('engines.myStylesPath', path.join(os.homedir(), 'lemo-my-styles'));
+const myPoster = dir => ['test.jpg', 'styleframe.jpg', 'poster.jpg'].map(f => path.join(dir, f)).find(f => fs.existsSync(f));
+function myStyles() {
+  const dir = myStylesDir();
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir).filter(s => fs.existsSync(path.join(dir, s, 'style.json')))
+    .map(slug => { const j = readJson(path.join(dir, slug, 'style.json')) || {}; return { slug, name: j.en || slug, category: 'My styles', line: j.line || '', uses: j.uses || [], poster: Boolean(myPoster(path.join(dir, slug))), mine: true, skill: fs.existsSync(path.join(os.homedir(), '.claude', 'skills', `${slug}-shorts`, 'SKILL.md')) ? `${slug}-shorts` : '' }; });
+}
 function lemoStyles() {
   const dir = path.join(paths().lemo, 'styles');
-  if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir).filter(s => !s.startsWith('_') && fs.existsSync(path.join(dir, s, 'style.json')))
+  if (!fs.existsSync(dir)) return myStyles();
+  return [...myStyles(), ...fs.readdirSync(dir).filter(s => !s.startsWith('_') && fs.existsSync(path.join(dir, s, 'style.json')))
     .map(slug => { const j = readJson(path.join(dir, slug, 'style.json')) || {}; return { slug, name: j.en || slug, category: j.category_en || 'Other', line: j.line || '', uses: j.uses || [], poster: fs.existsSync(path.join(dir, slug, 'poster.jpg')) }; })
-    .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+    .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name))];
 }
 
 function mptStatus() {
@@ -174,8 +184,8 @@ export async function enginesApi(req, res, url, { json, body }) {
     if (req.method === 'GET' && p === '/api/engines/poster') {
       const slug = String(url.searchParams.get('slug') || '');
       if (!/^[a-z0-9-]+$/.test(slug)) return json(res, 400, { error: 'Bad style.' });
-      const file = path.join(paths().lemo, 'styles', slug, 'poster.jpg');
-      if (!fs.existsSync(file)) return json(res, 404, { error: 'No poster.' });
+      const file = url.searchParams.get('mine') ? myPoster(path.join(myStylesDir(), slug)) : path.join(paths().lemo, 'styles', slug, 'poster.jpg');
+      if (!file || !fs.existsSync(file)) return json(res, 404, { error: 'No poster.' });
       return sendFile(req, res, file);
     }
     if (req.method === 'POST' && p === '/api/engines/mpt/start') {
