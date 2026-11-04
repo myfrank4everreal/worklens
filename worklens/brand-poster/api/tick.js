@@ -1,4 +1,4 @@
-// cron-job.org calls this every 10 minutes (…/api/tick?key=CRON_SECRET). Sends every post whose time has come.
+// cron-job.org calls this at the posting slots (…/api/tick?key=CRON_SECRET). Sends every post whose time has come.
 import { json, authed, allPosts, savePost, tg, postText, env } from './_lib.js';
 
 export default async function handler(req, res) {

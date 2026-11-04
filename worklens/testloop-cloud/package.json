@@ -1,0 +1,8 @@
+{
+  "name": "testloop-cloud",
+  "private": true,
+  "type": "module",
+  "description": "TestLoop Telegram bot on Vercel Hobby: webhook for messages, cron-job.org for the nightly pass, one JSON file in Vercel Blob for data.",
+  "engines": { "node": ">=20" },
+  "dependencies": { "@vercel/blob": "2.8.1" }
+}

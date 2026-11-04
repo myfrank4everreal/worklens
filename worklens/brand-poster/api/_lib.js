@@ -1,8 +1,13 @@
-// Shared helpers: the post queue (one JSON file per post in Vercel Blob) and the Telegram Bot API.
+// Shared helpers: the post queue (one JSON file in Vercel Blob) and the Telegram Bot API.
 import { put, list, del } from '@vercel/blob';
 
-const PREFIX = 'posts/';
+// The whole queue is one file, queue.json. Reading it by URL is a "simple" Blob operation;
+// put and list are "advanced" ones, and Hobby allows only 2,000 a month. So reads never list,
+// and a write happens only when a post really changes.
+const FILE = 'queue.json', OLD = 'posts/';
 export const env = k => (process.env[k] || '').trim();
+const storeId = () => (env('BLOB_READ_WRITE_TOKEN').split('_')[3] || '').toLowerCase();
+const fileUrl = () => `https://${storeId()}.public.blob.vercel-storage.com/${FILE}`;
 
 export function json(res, status, body) { res.status(status).setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(body)); }
 export function authed(req, key) {
@@ -12,26 +17,30 @@ export function authed(req, key) {
 }
 export const body = req => (typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {});
 
-export async function savePost(p) {
-  await put(`${PREFIX}${p.id}.json`, JSON.stringify(p), { access: 'public', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json', cacheControlMaxAge: 60 });
-  return p;
+async function writeAll(posts) {
+  await put(FILE, JSON.stringify(posts), { access: 'public', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json', cacheControlMaxAge: 60 });
 }
 export async function allPosts() {
-  const out = []; let cursor;
-  do {
-    const r = await list({ prefix: PREFIX, cursor, limit: 1000 });
-    for (const b of r.blobs) {
-      const res = await fetch(`${b.url}?t=${Date.now()}`, { cache: 'no-store' });   // skip the CDN copy: posts change state
-      if (res.ok) out.push(await res.json());
-    }
-    cursor = r.hasMore ? r.cursor : undefined;
-  } while (cursor);
+  const res = await fetch(`${fileUrl()}?t=${Date.now()}`, { cache: 'no-store' });   // skip the CDN copy: posts change state
+  if (res.ok) return res.json();
+  // First run after the switch from one file per post: fold the old files in once.
+  const r = await list({ prefix: OLD, limit: 1000 }), out = [];
+  for (const b of r.blobs) { const x = await fetch(`${b.url}?t=${Date.now()}`, { cache: 'no-store' }); if (x.ok) out.push(await x.json()); }
+  await writeAll(out);
+  if (r.blobs.length) await del(r.blobs.map(b => b.url));
   return out;
+}
+export async function savePost(p, posts) {
+  posts = posts || await allPosts();
+  const i = posts.findIndex(x => x.id === p.id);
+  if (i < 0) posts.push(p); else posts[i] = p;
+  await writeAll(posts);
+  return p;
 }
 export async function getPost(id) { return (await allPosts()).find(p => p.id === id) || null; }
 export async function deletePost(id) {
-  const r = await list({ prefix: `${PREFIX}${id}.json` });
-  if (r.blobs.length) await del(r.blobs.map(b => b.url));
+  const posts = await allPosts(), left = posts.filter(p => p.id !== id);
+  if (left.length !== posts.length) await writeAll(left);
 }
 
 export async function tg(method, payload) {

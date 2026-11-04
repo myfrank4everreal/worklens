@@ -1,0 +1,9 @@
+{
+  "functions": { "api/*.js": { "maxDuration": 60 } },
+  "rewrites": [
+    { "source": "/health", "destination": "/api/health" },
+    { "source": "/sync", "destination": "/api/sync" },
+    { "source": "/admin/announce", "destination": "/api/announce" },
+    { "source": "/admin/testers/:id", "destination": "/api/tester?id=:id" }
+  ]
+}

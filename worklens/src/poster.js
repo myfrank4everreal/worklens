@@ -11,7 +11,7 @@ import { localDay } from './brands.js';
 import { markPosted } from './hub.js';
 
 export const SLOTS = ['11:00', '19:00'];               // inside the 10:00–12:00 and 16:00–22:00 posting windows
-const EVERY = 5 * 60000, LEAD = 20 * 60000, TG_MAX = 50 * 1024 * 1024;
+const EVERY = 15 * 60000, LEAD = 20 * 60000, TG_MAX = 50 * 1024 * 1024;
 const cfg = () => ({ url: (getSetting('poster_url') || '').replace(/\/+$/, ''), secret: getSetting('poster_admin_secret') || '',
   token: getSetting('poster_bot_token') || '', chat: getSetting('poster_chat_id') || '' });
 const ready = c => !!(c.url && c.secret && c.token && c.chat);
