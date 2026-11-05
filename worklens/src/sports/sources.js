@@ -66,7 +66,10 @@ function makeThrottle(name, { readHeaders, minGapMs }) {
         const delay = Math.max(waitUntil - now, last + minGapMs - now, 0);
         if (delay > 0) { if (delay > 2000) log(`${name}: waiting ${Math.ceil(delay / 1000)}s for rate limit`); await sleep(delay); }
         last = Date.now();
-        const res = await fetch(url, { headers });
+        let res;
+        // Network blips ("fetch failed", resets) are retried with a growing pause.
+        try { res = await fetch(url, { headers, signal: AbortSignal.timeout(30_000) }); }
+        catch (e) { if (attempt === 3) throw new Error(`${name}: ${e.message} for ${url.replace(/\?.*/, '')}`); waitUntil = Date.now() + 3000 * (attempt + 1); continue; }
         const limits = readHeaders(res.headers);
         if (limits.pauseMs) waitUntil = Date.now() + limits.pauseMs;
         if (res.status === 429) {

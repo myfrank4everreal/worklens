@@ -42,7 +42,9 @@ export async function loadHistory() {
     const year = Number(comp.currentSeason.startDate.slice(0, 4));
     for (const [season, current] of [[year - 1, false], [null, true]]) {
       let data;
-      try { data = await footballData.matches(code, season, { current }); } catch (e) { console.error(`[sports] ${code} ${season ?? 'current'}: ${e.message}`); continue; }
+      // A missing season silently skews every rating (and the cross-league check), so stop instead.
+      try { data = await footballData.matches(code, season, { current }); }
+      catch (e) { throw new Error(`Could not load ${code} ${season ?? 'current season'} results (${e.message}). No briefing made; run it again.`); }
       for (const m of data.matches || []) {
         for (const t of [m.homeTeam, m.awayTeam]) if (t?.id) teams.set(`fd:${t.id}`, { id: `fd:${t.id}`, name: t.name, short: t.shortName || t.name, tla: t.tla, crest: t.crest });
         const sc = m.status === 'FINISHED' ? scoreOf(m) : null;
@@ -55,7 +57,7 @@ export async function loadHistory() {
   // Each team's domestic league = the non-continental competition of its latest match.
   for (const m of matches) {
     if (CONTINENTAL.has(m.comp)) continue;
-    teams.get(m.home).league = m.comp; teams.get(m.away).league = m.comp;
+    for (const id of [m.home, m.away]) { const t = teams.get(id); t.league = m.comp; (t.divisions ||= new Set()).add(m.comp); }
   }
   return { matches, teams, comps: byCode };
 }
@@ -64,13 +66,15 @@ const CONTINENTAL = new Set(['CL', 'CLI']);
 // The model is validated on matches inside one league. Clubs from different leagues only meet in
 // European/continental games, too few to pin league strength, so for those the model's view is
 // blended with the bookmaker's (40% model, 60% market) and the match is flagged.
+// The same goes for a side that changed division inside the data window (promoted or relegated):
+// half its record comes from another league, which the model can't scale reliably.
 const CROSS_LEAGUE_MODEL_WEIGHT = 0.4;
-function blendWithMarket(model, market) {
+function blendWithMarket(model, market, reason = 'cross-league') {
   const w = CROSS_LEAGUE_MODEL_WEIGHT, mix = (a, b) => b == null ? a : round(w * a + (1 - w) * b);
   const raw = { probs: model.probs, over25: model.over25, btts: model.btts };
   const probs = { home: mix(model.probs.home, market.home), draw: mix(model.probs.draw, market.draw), away: mix(model.probs.away, market.away) };
   const over25 = mix(model.over25, market.over25);
-  return { ...model, probs, over25, under25: round(1 - over25), btts: mix(model.btts, market.bttsYes), raw, blend: `cross-league: ${w * 100}% model / ${(1 - w) * 100}% market` };
+  return { ...model, probs, over25, under25: round(1 - over25), btts: mix(model.btts, market.bttsYes), raw, blendReason: reason, blend: `${reason}: ${w * 100}% model / ${(1 - w) * 100}% market` };
 }
 
 function formOf(matches, teamId, before, n = 5) {
@@ -263,10 +267,14 @@ export async function buildBriefing(date = localDate(), { maxOddsLookups = 10 } 
     const H = history.teams.get(m.homeId), A = history.teams.get(m.awayId);
     // A team seen only in continental games has no domestic league here: treat as cross-league.
     m.crossLeague = Boolean(H && A && (!H.league || !A.league || H.league !== A.league));
-    if (m.crossLeague && m.model && m.market?.home != null) m.model = blendWithMarket(m.model, m.market);
-    m.picks = m.crossLeague && !m.model?.blend ? [] : valuePicks(m);
+    const moved = [H, A].filter(t => t?.divisions?.size > 1);
+    m.changedDivision = !m.crossLeague && moved.length > 0;
+    const reason = m.crossLeague ? 'cross-league' : m.changedDivision ? 'changed division' : null;
+    if (reason && m.model && m.market?.home != null) m.model = blendWithMarket(m.model, m.market, reason);
+    m.picks = reason && !m.model?.blend ? [] : valuePicks(m);
     m.angles = angles(m);
     if (m.crossLeague) m.angles.push(m.model?.blend ? 'Cross-league tie: numbers blend the model with the market.' : 'Cross-league tie with no odds yet: model numbers are rough, no picks.');
+    if (m.changedDivision) m.angles.push(`${moved.map(t => t.short).join(' and ')} changed division recently: ${m.model?.blend ? 'numbers blend the model with the market' : 'model numbers are rough, no picks'}.`);
   }
 
   const allPicks = matches.flatMap(m => m.picks.map(p => ({ ...p, match: `${m.home} v ${m.away}`, matchId: m.id, competition: m.competition, kickoff: m.kickoff })));

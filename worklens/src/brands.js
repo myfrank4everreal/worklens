@@ -101,12 +101,20 @@ export function seedBrandAccounts() {
 // Third seed: the football brand. No accounts yet: the person creates the handles and adds them
 // in the Brand Command Center. Added once; deleting it by hand keeps it deleted.
 export function seedSportsBrand() {
-  if (getSetting('brand_sports_seeded_v1') === 'true') return;
-  if (!db.prepare('SELECT 1 FROM brands WHERE lower(name)=lower(?)').get('Pitch Prophet')) {
-    db.prepare('INSERT INTO brands(name,color,description,sort) VALUES(?,?,?,(SELECT COALESCE(MAX(sort),-1)+1 FROM brands))')
-      .run('Pitch Prophet', '#16A34A', 'Football brand: daily data-driven match analysis and predictions (YouTube 16:9), plus shorts on TikTok/IG/YT. Every betting post carries the 18+ disclaimer.');
+  if (getSetting('brand_sports_seeded_v1') !== 'true') {
+    if (!db.prepare('SELECT 1 FROM brands WHERE lower(name)=lower(?)').get('Pitch Prophet')) {
+      db.prepare('INSERT INTO brands(name,color,description,sort) VALUES(?,?,?,(SELECT COALESCE(MAX(sort),-1)+1 FROM brands))')
+        .run('Pitch Prophet', '#16A34A', 'Football brand: daily data-driven match analysis and predictions (YouTube 16:9), plus shorts on TikTok/IG/YT. Every betting post carries the 18+ disclaimer.');
+    }
+    setSetting('brand_sports_seeded_v1', 'true');
   }
-  setSetting('brand_sports_seeded_v1', 'true');
+  // Four posts a day: 11:00 daily analysis and 13:00 teaser go out before the afternoon kick-offs,
+  // 17:00 and 19:00 carry the evergreen shorts. Set once; the person can change the setting.
+  const brand = db.prepare('SELECT id FROM brands WHERE lower(name)=lower(?)').get('Pitch Prophet');
+  if (brand && getSetting('brand_sports_slots_v1') !== 'true') {
+    if (!getSetting(`poster_slots_${brand.id}`)) setSetting(`poster_slots_${brand.id}`, '11:00,13:00,17:00,19:00');
+    setSetting('brand_sports_slots_v1', 'true');
+  }
 }
 
 export function logToWorkLens(account, brand, action) {

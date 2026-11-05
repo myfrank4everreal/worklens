@@ -288,6 +288,42 @@ charging you. To stay inside it:
 - Workstation syncs the posting bot every 15 minutes and TestLoop every 10.
 - Don't shorten these intervals.
 
+**Brand slots and post-by times.** A brand can have its own slots in the setting `poster_slots_<brandId>`
+(Pitch Prophet: `11:00,13:00,17:00,19:00`). The cloud bot only sends when cron-job.org calls it, so the cron job's
+hours must include every slot in use (`0,15 11,13,17,19 * * *` for these). A card with `post_by` (match predictions)
+is never given a slot after that time; its note says so instead, and you can post it by hand or drop it.
+
+## Pitch Prophet (football brand): data → film → queue
+
+Daily football predictions made from data only: no match footage, no club crests.
+
+| Step | Command | Output |
+|---|---|---|
+| Briefing | `npm run sports -- briefing [date]` | `data/sports/briefings/<date>.json/.md`: matches, model probabilities, odds, form, tables, story angles, picks, 18+ disclaimer |
+| Film | `npm run sports:render -- [date] --format long\|short` | `<lemo>/films/pitch-prophet-<date>-<format>/`: `<name>.mp4`, `.srt`, `post.json` |
+| Queue | `npm run sports -- queue [date]` | Content cards at **Edited** for the posting bot, with title, description, hashtags and `post_by` |
+| Track record | `npm run sports -- grade` | `data/sports/track-record.json` from finished results |
+| Model check | `npm run sports -- backtest [PL] [from] [to]` | walk-forward accuracy and log loss v a naive baseline |
+
+- **Data:** football-data.org (`FOOTBALL_DATA_TOKEN`: tables, fixtures, results for 11 club competitions) and API-Football
+  (`API_FOOTBALL_KEY`: every fixture on a date, plus bookmaker odds; 100 requests a day, 15 kept in reserve). Both
+  calls honour each API's rate-limit headers and are cached in `data/sports/cache/`. A briefing whose history fails
+  to load stops rather than publishing skewed numbers.
+- **Model** (`src/sports/model.js`): Dixon-Coles with time decay and shrinkage, fitted on two seasons of every
+  competition together. Jan–May 2026 walk-forward on PL/LaLiga/Serie A/Bundesliga: ~50% right, log loss 1.020 v 1.080
+  naive. Cross-league ties (European cups) blend 40% model / 60% market. Value picks need model ≥ 40%, ≥ 4 points over
+  the bookmaker's fair price, odds 1.40–4.00.
+- **Film** (`src/sports/film/`): a lemo-opuscar page in the Sports Telestrator board style (home yellow, away cyan,
+  warnings red). Long = sting, today's card, per match title / form / xG pitch / scoreline heat map / model v bookies /
+  angle, league table, picks + disclaimer, end card. Short = hook, pitch, scorelines, form, angle, "full breakdown on
+  YouTube". Narration (`src/sports/narration.js`) is one Kokoro line per scene written from the numbers (voice
+  `SPORTS_VOICE`, default `am_fenrir`); each scene stretches to its line. `mix.py` adds a coded groove (ducked under
+  the voice) and foley; lemo's `mux.sh` masters to −14 LUFS. Matches kicking off before `--from` (12:00) are left
+  out, since the posts go out from 11:00. Over 49 MB, an upload copy is made for Telegram.
+- **Copy rules:** titles, descriptions and hashtags come from the teams, competitions and numbers in the film;
+  the long video's description carries YouTube chapters. The short (also for TikTok) never mentions odds, bookmakers
+  or the market. Every post carries "Predictions, not guarantees. 18+".
+
 ## Workstation · TestLoop bot in the cloud
 
 The TestLoop Telegram bot runs on Vercel at https://testloop-cloud.vercel.app (`testloop-cloud/`), not on this PC.

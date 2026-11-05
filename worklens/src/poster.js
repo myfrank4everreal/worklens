@@ -57,10 +57,19 @@ async function uploadVideo(file) {
 
 const pad = n => String(n).padStart(2, '0');
 const stamp = d => `${localDay(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+// A brand can have its own slots (setting poster_slots_<brandId> = "11:00,13:00,17:00,19:00");
+// otherwise SLOTS. The cloud bot sends when cron-job.org calls it, so every slot used here must also
+// be an hour in the cron job's schedule.
+export function slotsFor(brandId) {
+  const raw = getSetting(`poster_slots_${brandId}`) || '';
+  const own = raw.split(',').map(s => s.trim()).filter(s => /^([01]\d|2[0-3]):[0-5]\d$/.test(s)).sort();
+  return own.length ? own : SLOTS;
+}
+
 // The brand's next free slot at least LEAD from now ("YYYY-MM-DDTHH:MM", local wall clock).
 export function nextSlot(brandId, now = new Date()) {
   const taken = new Set(db.prepare("SELECT scheduled_at FROM content_items WHERE brand_id=? AND scheduled_at IS NOT NULL AND stage IN ('scheduled','posted')").all(brandId).map(r => r.scheduled_at));
-  for (let day = 0; day < 365; day++) for (const s of SLOTS) {
+  for (let day = 0; day < 365; day++) for (const s of slotsFor(brandId)) {
     const d = new Date(now); d.setDate(d.getDate() + day); const [h, m] = s.split(':').map(Number); d.setHours(h, m, 0, 0);
     if (d - now >= LEAD && !taken.has(stamp(d))) return stamp(d);
   }
@@ -86,9 +95,14 @@ async function scheduleReady() {
     const need = missing(i);
     if (need.length) { note(i.id, `Can't schedule yet: needs ${need.join(', ')}.`); continue; }
     const brand = db.prepare('SELECT name FROM brands WHERE id=?').get(i.brand_id).name;
+    const at = nextSlot(i.brand_id);
+    // Time-sensitive posts (match predictions) carry post_by: never schedule them after it.
+    if (i.post_by && at > i.post_by) {
+      note(i.id, `Not scheduled: the next free slot (${at.replace('T', ' ')}) is after the post-by time (${i.post_by.replace('T', ' ')}, before kick-off). Post it by hand now, or move it back to Draft.`);
+      continue;
+    }
     const fileId = i.tg_file_id || await uploadVideo(i.media);
     const postNo = i.post_no || (db.prepare('SELECT MAX(post_no) AS n FROM content_items WHERE brand_id=?').get(i.brand_id).n || 0) + 1;
-    const at = nextSlot(i.brand_id);
     db.prepare('UPDATE content_items SET tg_file_id=?, post_no=? WHERE id=?').run(fileId, postNo, i.id);
     await bot('/api/queue', { method: 'POST', body: JSON.stringify({ id: `wl-${i.id}`, brand, n: postNo, title: i.title, description: i.caption, hashtags: i.hashtags, fileId, at: new Date(at).toISOString() }) });
     db.prepare("UPDATE content_items SET stage='scheduled', scheduled_at=?, updated_at=CURRENT_TIMESTAMP WHERE id=?").run(at, i.id);

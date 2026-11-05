@@ -82,7 +82,8 @@ function ring(cx, cy, r, color, prog) {
 }
 
 // ---------- data ----------
-let B = null, MATCHES = [], TIMELINE = [], TABLE = null;
+let B = null, MATCHES = [], TIMELINE = [], TABLE = null, VOICE = {};
+const VOICE_IN = 0.35, VOICE_OUT = 0.8;
 const upper = s => String(s || '').toUpperCase();
 const dayLabel = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }).toUpperCase();
 const coreWords = name => upper(name).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9 ]/g, '').split(' ').filter(w => w && !/^(FC|AFC|CF|AC|SC|TSG|CD|RC|UD|SSC|\d+)$/.test(w));
@@ -198,7 +199,7 @@ function sceneTitle(m, k) {
     teamDisc(1420, 480, 150, m.away, C.away, q);
     text('ta', upper(m.away), 1420, 760, { size: 110, italic: true, color: C.away, align: 'center', alpha: q, maxW: 760 });
     ctx.restore();
-    if (m.crossLeague) text('tx', 'CROSS-LEAGUE TIE', 960, 860, { size: 34, weight: 600, align: 'center', spacing: 4, color: C.red, reveal: eo(seg(lt, 0.9, 1.3)) });
+    if (m.crossLeague || m.changedDivision) text('tx', m.crossLeague ? 'CROSS-LEAGUE TIE' : 'A SIDE CHANGED DIVISION: MODEL + MARKET', 960, 860, { size: 34, weight: 600, align: 'center', spacing: 4, color: C.red, reveal: eo(seg(lt, 0.9, 1.3)) });
   } };
 }
 
@@ -316,7 +317,7 @@ function scenePitch(m, k) {
       return;
     }
     text('ph', 'EXPECTED GOALS & WIN CHANCE', 120, 160, { size: 70, italic: true, reveal: eo(seg(lt, 0, 0.4)) });
-    text('ps', m.model.blend ? 'MODEL BLENDED WITH THE MARKET (CROSS-LEAGUE)' : 'DIXON-COLES MODEL · TWO SEASONS OF RESULTS', 124, 206, { size: 28, weight: 600, spacing: 3, color: C.dim, reveal: eo(seg(lt, 0.3, 0.8)) });
+    text('ps', m.model.blend ? `MODEL BLENDED WITH THE MARKET (${upper(m.model.blendReason || 'cross-league')})` : 'DIXON-COLES MODEL · TWO SEASONS OF RESULTS', 124, 206, { size: 28, weight: 600, spacing: 3, color: C.dim, reveal: eo(seg(lt, 0.3, 0.8)) });
     pitch(410, 245, 1100, lt, m, false);
     probBar(410, 978, 1100, 76, m, seg(lt, 2.6, 3.4), 'pbar');
   } };
@@ -378,8 +379,10 @@ function sceneMarket(m, k) {
 }
 
 function sceneAngles(m, k) {
-  const list = (m.angles || []).filter(a => !/^Cross-league tie/.test(a)).slice(0, 2);
-  if (m.crossLeague && list.length < 2) list.push('Cross-league tie: numbers blend the model with the bookies.');
+  // The short goes to TikTok too: no odds / bookmaker / market talk on it.
+  const list = (m.angles || []).filter(a => !/^Cross-league tie|changed division recently/.test(a) && !(SHORT && /market|bookies|odds/i.test(a))).slice(0, 2);
+  if (m.crossLeague && list.length < 2 && !SHORT) list.push('Cross-league tie: numbers blend the model with the bookies.');
+  if (!list.length) list.push(`Both teams to score: ${pct(m.model.btts)}. Three or more goals: ${pct(m.model.over25)}.`);
   // Long enough for each card to be read: it appears at 0.8 + 1.2·i s and needs chars/15 + 1.5 s.
   const dur = Math.max(3, ...list.map((a, i) => 0.8 + 1.2 * i + a.replace(/\s/g, '').length / 15 + 1.7));
   return { id: `angles${k}`, dur, section: `m${k}`, draw(lt) {
@@ -526,10 +529,18 @@ function build() {
     if (pickTable && pickTable.highlight.size) { TABLE = pickTable; sc.push(sceneTable()); }
     sc.push(scenePicks(), sceneEnd());
   }
+  // With narration (voice/dur.json: { sceneId: seconds }), each scene lasts at least its voice line
+  // plus a breath; the line starts VOICE_IN after the cut.
   let t = 0; TIMELINE = [];
-  for (const s of sc.filter(Boolean)) { TIMELINE.push({ ...s, t0: t, newSection: TIMELINE.length && TIMELINE[TIMELINE.length - 1].section !== s.section }); t += s.dur; }
+  for (const s of sc.filter(Boolean)) {
+    const v = VOICE[s.id];
+    const dur = v ? Math.max(s.dur, VOICE_IN + v + VOICE_OUT) : s.dur;
+    TIMELINE.push({ ...s, dur, t0: t, newSection: TIMELINE.length && TIMELINE[TIMELINE.length - 1].section !== s.section });
+    t += dur;
+  }
   window.DUR = Math.round(t * 100) / 100;
-  window.EV = TIMELINE.map(s => ({ t: s.t0, type: s.newSection ? 'wipe' : 'cut', scene: s.id }));
+  window.EV = TIMELINE.flatMap(s => [{ t: s.t0, type: s.newSection ? 'wipe' : 'cut', scene: s.id },
+    ...(VOICE[s.id] ? [{ t: s.t0 + VOICE_IN, type: 'voice', scene: s.id, dur: VOICE[s.id] }] : [])]);
 }
 
 window.render = t => {
@@ -546,6 +557,7 @@ window.TEXTS = t => { window.render(t); return TXT; };
 (async () => {
   const src = Q.get('briefing') || 'briefing.json';
   B = await (await fetch(src)).json();
+  try { const r = await fetch('voice/dur.json'); if (r.ok) VOICE = await r.json(); } catch { /* silent film: base timings */ }
   await Promise.all([document.fonts.load(`700 40px "Barlow PP"`), document.fonts.load(`600 40px "Barlow PP"`)]);
   build();
   window.render(0);
