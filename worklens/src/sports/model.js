@@ -109,8 +109,11 @@ export function predict(model, homeId, awayId, { neutral = false, max = 10 } = {
     if (c.a === 0) homeClean += c.p;
     if (c.h === 0) awayClean += c.p;
   }
+  // 6×6 score grid (home goals = row, away goals = column) for the heat-map scene.
+  const matrix = Array.from({ length: 6 }, (_, i) => Array.from({ length: 6 }, (_, j) => round(grid[i * (max + 1) + j].p, 4)));
   const scores = grid.sort((x, y) => y.p - x.p).slice(0, 5).map(c => ({ score: `${c.h}-${c.a}`, p: round(c.p) }));
   return {
+    matrix,
     xg: { home: round(lam, 2), away: round(mu, 2) },
     probs: { home: round(home), draw: round(draw), away: round(away) },
     over25: round(over25), under25: round(1 - over25), btts: round(btts),

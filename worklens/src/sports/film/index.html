@@ -1,0 +1,555 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Pitch Prophet</title>
+<style>
+  @font-face { font-family: 'Barlow PP'; font-weight: 700; src: url(fonts/BarlowCondensed-Bold.ttf) format('truetype'); font-display: block; }
+  @font-face { font-family: 'Barlow PP'; font-weight: 600; src: url(fonts/BarlowCondensed-SemiBold.ttf) format('truetype'); font-display: block; }
+  html, body { margin: 0; background: #0C1411; overflow: hidden; }
+  canvas { display: block; }
+</style></head>
+<body><canvas id="c"></canvas>
+<script>
+// Pitch Prophet · briefing film. A lemo-opuscar page (window.DUR / render(t) / READY / TEXTS):
+// every frame is drawn from briefing.json, the day's data-engine output, so the film is
+// rebuilt from data each day and contains no footage. Layout follows the frame:
+// 1920×1080 → the daily YouTube analysis, 1080×1920 → the teaser short (?format=short).
+// Visual grammar: a sports telestrator's board pages — dark board, home = yellow, away = cyan,
+// warning = red, chalk for neutral; a yellow slanted wipe between sections, hard cuts inside.
+const Q = new URLSearchParams(location.search);
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const W = cv.width = innerWidth, H = cv.height = innerHeight;
+const SHORT = Q.get('format') === 'short' || H > W;
+const U = SHORT ? W / 1080 : W / 1920;              // design units → pixels
+const C = { board: '#0C1411', home: '#FFD400', away: '#3FD8FF', red: '#FF3B30', chalk: '#F4F1E8', dim: '#7E8A84', card: 'rgba(8,12,14,0.9)' };
+const FONT = '"Barlow PP", "Bahnschrift", "Arial Narrow", sans-serif';
+
+// ---------- easing / helpers (deterministic) ----------
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const eo = x => 1 - Math.pow(1 - x, 3);
+const eio = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = (x, s = 1.6) => 1 + (s + 1) * Math.pow(x - 1, 3) + s * Math.pow(x - 1, 2);
+const lerp = (a, b, x) => a + (b - a) * x;
+const pct = p => `${Math.round(p * 100)}%`;
+const hash = n => { let x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+
+// ---------- text with a registry for readcheck ----------
+let TXT = [];
+function text(id, str, x, y, o = {}) {
+  const size = (o.size || 40) * U, a = o.alpha ?? 1, reveal = o.reveal ?? 1;
+  if (a <= 0.01 || reveal <= 0 || !str) return 0;
+  let px = size;
+  ctx.font = `${o.italic ? 'italic ' : ''}${o.weight || 700} ${px}px ${FONT}`;
+  if (o.maxW) { const w = ctx.measureText(str).width; if (w > o.maxW * U) { px = size * (o.maxW * U) / w; ctx.font = `${o.italic ? 'italic ' : ''}${o.weight || 700} ${px}px ${FONT}`; } }
+  if (o.spacing) ctx.letterSpacing = `${o.spacing * U}px`; else ctx.letterSpacing = '0px';
+  const w = ctx.measureText(str).width;
+  const X = x * U, Y = y * U, align = o.align || 'left';
+  const x0 = align === 'center' ? X - w / 2 : align === 'right' ? X - w : X;
+  ctx.save();
+  ctx.globalAlpha *= a;
+  if (reveal < 1) { ctx.beginPath(); ctx.rect(x0 - 4, Y - px * 1.1, (w + 8) * reveal, px * 1.5); ctx.clip(); }
+  ctx.fillStyle = o.color || C.chalk; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  if (o.shadow) { ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 18 * U; }
+  ctx.fillText(str, x0, Y);
+  ctx.restore();
+  if (a > 0.6 && reveal >= 1 && !o.noRead) TXT.push({ id, text: str, x0: Math.round(x0), y0: Math.round(Y - px * 0.8), x1: Math.round(x0 + w), y1: Math.round(Y + px * 0.2) });
+  return w / U;
+}
+function wrap(str, maxW, size, weight = 700) {
+  ctx.font = `${weight} ${size * U}px ${FONT}`; ctx.letterSpacing = '0px';
+  const words = String(str).split(' '), lines = []; let line = '';
+  for (const w of words) { const t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW * U && line) { lines.push(line); line = w; } else line = t; }
+  if (line) lines.push(line);
+  return lines;
+}
+const rect = (x, y, w, h, fill, a = 1) => { ctx.save(); ctx.globalAlpha *= a; ctx.fillStyle = fill; ctx.fillRect(x * U, y * U, w * U, h * U); ctx.restore(); };
+function rrect(x, y, w, h, r, fill, a = 1, stroke) {
+  ctx.save(); ctx.globalAlpha *= a; ctx.beginPath(); ctx.roundRect(x * U, y * U, w * U, h * U, r * U);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke.c; ctx.lineWidth = stroke.w * U; ctx.stroke(); }
+  ctx.restore();
+}
+// Marker line, telestrator style: dark outline + glowing coloured core + thin highlight.
+function marker(path, color, w, prog = 1) {
+  ctx.save();
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const draw = (lw, c, blur) => { ctx.beginPath(); path(); ctx.strokeStyle = c; ctx.lineWidth = lw * U; ctx.shadowColor = blur ? c : 'transparent'; ctx.shadowBlur = blur * U; ctx.stroke(); };
+  const len = 4000 * U; ctx.setLineDash([len * prog, len]);
+  draw(w + 6, 'rgba(0,0,0,0.55)', 0); draw(w, color, 18); draw(w * 0.28, 'rgba(255,255,255,0.85)', 0);
+  ctx.restore();
+}
+function ring(cx, cy, r, color, prog) {
+  marker(() => { ctx.ellipse(cx * U, cy * U, r * U, r * 0.82 * U, -0.25, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog * 1.04); }, color, 6, 1);
+}
+
+// ---------- data ----------
+let B = null, MATCHES = [], TIMELINE = [], TABLE = null;
+const upper = s => String(s || '').toUpperCase();
+const dayLabel = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }).toUpperCase();
+const coreWords = name => upper(name).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9 ]/g, '').split(' ').filter(w => w && !/^(FC|AFC|CF|AC|SC|TSG|CD|RC|UD|SSC|\d+)$/.test(w));
+// Badge letters: initials of a multi-word name (CP, RS), first three letters of a one-word name (HOF).
+const initials = name => { const w = coreWords(name); return (w.length > 1 ? w.map(x => x[0]).join('') : (w[0] || upper(name)).slice(0, 3)).slice(0, 3); };
+// Short display name for axis labels: "1899 Hoffenheim" → "HOFFENHEIM".
+const shortName = name => { const w = coreWords(name).join(' '); return w.length <= 16 ? w : initials(name); };
+// Width of a string in design units, for blocks sized to their text.
+const measure = (str, size, weight = 700, italic = true) => { ctx.font = `${italic ? 'italic ' : ''}${weight} ${size * U}px ${FONT}`; ctx.letterSpacing = '0px'; return ctx.measureText(str).width / U; };
+
+// ---------- background, bug, wipe ----------
+function board(t) {
+  ctx.fillStyle = C.board; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.strokeStyle = 'rgba(244,241,232,0.045)'; ctx.lineWidth = 1;
+  const g = 60 * U, off = (t * 6 * U) % g;
+  ctx.beginPath();
+  for (let x = -off; x < W; x += g) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+  for (let y = 0; y < H; y += g) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+  ctx.stroke(); ctx.restore();
+  const v = ctx.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.2, W / 2, H / 2, Math.max(W, H) * 0.75);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.55)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+}
+function bug(mode) {
+  const x = SHORT ? 60 : 1452, y = SHORT ? 70 : 38;
+  rect(x, y, 250, 44, C.home);
+  text('bug', 'PITCH PROPHET', x + 14, y + 34, { size: 32, color: '#0C1411', spacing: 1, noRead: true });
+  rect(x + 250, y, 178, 44, '#080C0E', 0.95);
+  text('bugmode', mode, x + 264, y + 33, { size: 26, color: C.home, weight: 600, spacing: 2, noRead: true });
+}
+// Yellow slanted band with dark edges crossing the frame in 0.34 s, centred on a section cut.
+function wipe(t, at) {
+  const p = seg(t, at - 0.17, at + 0.17);
+  if (p <= 0 || p >= 1) return;
+  const x = lerp(-0.5, 1.5, eio(p)) * W, band = W * 0.42, slant = H * 0.35;
+  ctx.save();
+  const poly = (o, wd) => { ctx.beginPath(); ctx.moveTo(x - wd / 2 + slant + o, 0); ctx.lineTo(x + wd / 2 + slant + o, 0); ctx.lineTo(x + wd / 2 - slant + o, H); ctx.lineTo(x - wd / 2 - slant + o, H); ctx.closePath(); };
+  ctx.fillStyle = '#080C0E'; poly(0, band + 40 * U); ctx.fill();
+  ctx.fillStyle = C.home; poly(0, band); ctx.fill();
+  ctx.restore();
+}
+
+// ---------- scenes ----------
+// Each scene: { id, dur, section (wipe before it when the section changes), draw(lt, d) }
+function sceneSting() {
+  return { id: 'sting', dur: SHORT ? 2.4 : 5.2, section: 'open', draw(lt) {
+    const s = SHORT ? { x: 540, y: 860, size: 150 } : { x: 960, y: 520, size: 190 };
+    const pop = back(seg(lt, 0.15, 0.6));
+    ctx.save(); ctx.translate(s.x * U, s.y * U); ctx.scale(lerp(1.6, 1, pop), lerp(1.6, 1, pop)); ctx.translate(-s.x * U, -s.y * U);
+    const a = seg(lt, 0.15, 0.3);
+    text('w1', 'PITCH', s.x, s.y - s.size * 0.55, { size: s.size, align: 'center', italic: true, alpha: a, color: C.chalk });
+    const pw = measure('PROPHET', s.size) + s.size * 0.5;
+    rect(s.x - pw / 2, s.y - s.size * 0.42, pw, s.size * 1.0, C.home, a);
+    text('w2', 'PROPHET', s.x, s.y + s.size * 0.4, { size: s.size, align: 'center', italic: true, alpha: a, color: '#0C1411' });
+    ctx.restore();
+    if (lt < 0.28) { ctx.save(); ctx.globalAlpha = 0.55 * (1 - seg(lt, 0.15, 0.28)); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+    const r = eo(seg(lt, 0.8, 1.3));
+    text('date', `DAILY BRIEFING  ·  ${dayLabel(B.date)}`, s.x, s.y + s.size * 1.05, { size: SHORT ? 46 : 52, align: 'center', weight: 600, spacing: 4, reveal: r, color: C.home });
+    text('tag', 'THE MODEL CALLS IT BEFORE KICK-OFF', s.x, s.y + s.size * 1.05 + (SHORT ? 70 : 74), { size: SHORT ? 36 : 40, align: 'center', weight: 600, spacing: 3, reveal: eo(seg(lt, 1.2, 1.7)), color: C.dim });
+  } };
+}
+
+function sceneRundown() {
+  const rows = MATCHES.slice(0, 6);
+  return { id: 'rundown', dur: 2.2 + rows.length * 0.45 + 1.5, section: 'rundown', draw(lt) {
+    bug('TODAY');
+    text('h', "TODAY'S CARD", 120, 200, { size: 96, italic: true, reveal: eo(seg(lt, 0, 0.5)) });
+    text('hs', `${B.matches.length} MATCHES SCANNED  ·  TOP ${rows.length} BY STAKES`, 124, 252, { size: 32, weight: 600, spacing: 3, color: C.dim, reveal: eo(seg(lt, 0.3, 0.8)) });
+    rows.forEach((m, i) => {
+      const p = eo(seg(lt, 0.6 + i * 0.45, 1.1 + i * 0.45)), y = 360 + i * 108;
+      if (p <= 0) return;
+      ctx.save(); ctx.translate((1 - p) * -60 * U, 0); ctx.globalAlpha = p;
+      rect(120, y, 1680, 92, C.card);
+      rect(120, y, 8, 92, i === 0 ? C.home : C.chalk);
+      text(`rk${i}`, m.kickoff, 160, y + 62, { size: 46, italic: true, color: C.home });
+      text(`rc${i}`, upper(m.competition), 330, y + 58, { size: 28, weight: 600, spacing: 2, color: C.dim, maxW: 330 });
+      const t1 = `${upper(m.home)}  v  ${upper(m.away)}`;
+      text(`rm${i}`, t1, 700, y + 63, { size: 50, maxW: 900 });
+      if (m.model) text(`rp${i}`, `${pct(m.model.probs.home)} · ${pct(m.model.probs.draw)} · ${pct(m.model.probs.away)}`, 1770, y + 60, { size: 34, weight: 600, align: 'right', color: C.chalk, alpha: 0.85 });
+      ctx.restore();
+    });
+  } };
+}
+
+function teamDisc(cx, cy, r, name, color, p) {
+  ctx.save(); ctx.globalAlpha *= p;
+  ctx.beginPath(); ctx.arc(cx * U, cy * U, r * U * lerp(0.6, 1, back(p)), 0, Math.PI * 2);
+  ctx.fillStyle = '#080C0E'; ctx.fill(); ctx.lineWidth = 8 * U; ctx.strokeStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 24 * U; ctx.stroke();
+  ctx.restore();
+  text(`disc-${name}`, initials(name), cx, cy + r * 0.3, { size: r * 0.85, align: 'center', italic: true, color, alpha: p, noRead: true });
+}
+
+function sceneTitle(m, k) {
+  return { id: `title${k}`, dur: 5.0, section: `m${k}`, draw(lt) {
+    bug(`MATCH ${k + 1}`);
+    const p = eo(seg(lt, 0, 0.45)), q = eo(seg(lt, 0.25, 0.7));
+    if (SHORT) {
+      text('tc', `${upper(m.competition)}  ·  ${m.kickoff}`, 540, 420, { size: 44, weight: 600, align: 'center', spacing: 3, color: C.dim, reveal: p });
+      teamDisc(540, 650, 120, m.home, C.home, p);
+      text('th', upper(m.home), 540, 880, { size: 110, align: 'center', italic: true, color: C.home, reveal: p, maxW: 960 });
+      text('tv', 'VS', 540, 1010, { size: 70, align: 'center', italic: true, color: C.chalk, alpha: q });
+      text('ta', upper(m.away), 540, 1150, { size: 110, align: 'center', italic: true, color: C.away, reveal: q, maxW: 960 });
+      teamDisc(540, 1340, 120, m.away, C.away, q);
+      return;
+    }
+    text('tc', `${upper(m.competition)}${m.stage && !/REGULAR/.test(m.stage) ? '  ·  ' + upper(String(m.stage).replace(/_/g, ' ')) : ''}  ·  KICK-OFF ${m.kickoff} WAT`, 960, 250, { size: 42, weight: 600, align: 'center', spacing: 3, color: C.dim, reveal: p, maxW: 1500 });
+    ctx.save(); ctx.translate((1 - p) * -120 * U, 0);
+    teamDisc(500, 480, 150, m.home, C.home, p);
+    text('th', upper(m.home), 500, 760, { size: 110, italic: true, color: C.home, align: 'center', alpha: p, maxW: 760 });
+    ctx.restore();
+    text('tv', 'V', 960, 520, { size: 110, align: 'center', italic: true, alpha: seg(lt, 0.2, 0.4) });
+    ctx.save(); ctx.translate((1 - q) * 120 * U, 0);
+    teamDisc(1420, 480, 150, m.away, C.away, q);
+    text('ta', upper(m.away), 1420, 760, { size: 110, italic: true, color: C.away, align: 'center', alpha: q, maxW: 760 });
+    ctx.restore();
+    if (m.crossLeague) text('tx', 'CROSS-LEAGUE TIE', 960, 860, { size: 34, weight: 600, align: 'center', spacing: 4, color: C.red, reveal: eo(seg(lt, 0.9, 1.3)) });
+  } };
+}
+
+function chips(x, y, form, color, p, id, size = 72) {
+  const res = String(form || '').split('');
+  res.forEach((r, i) => {
+    const q = back(seg(p, i * 0.12, i * 0.12 + 0.3));
+    if (q <= 0) return;
+    const cx = x + i * (size + 14);
+    ctx.save(); ctx.translate((cx + size / 2) * U, (y + size / 2) * U); ctx.scale(q, q); ctx.translate(-(cx + size / 2) * U, -(y + size / 2) * U);
+    if (r === 'W') rrect(cx, y, size, size, 10, color);
+    else if (r === 'D') rrect(cx, y, size, size, 10, '#2A3430', 1, { c: C.chalk, w: 3 });
+    else rrect(cx, y, size, size, 10, 'rgba(255,59,48,0.18)', 1, { c: C.red, w: 4 });
+    ctx.restore();
+    text(`${id}${i}`, r, cx + size / 2, y + size * 0.72, { size: size * 0.66, align: 'center', italic: true, color: r === 'W' ? '#0C1411' : r === 'D' ? C.chalk : C.red, alpha: clamp(q), noRead: true });
+  });
+  if (res.length) TXT.push({ id, text: form, x0: Math.round(x * U), y0: Math.round(y * U), x1: Math.round((x + res.length * (size + 14)) * U), y1: Math.round((y + size) * U) });
+}
+const ord = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
+const formPts = f => [...String(f || '')].reduce((s, r) => s + (r === 'W' ? 3 : r === 'D' ? 1 : 0), 0);
+
+function sceneForm(m, k) {
+  return { id: `form${k}`, dur: 5.2, section: `m${k}`, draw(lt) {
+    bug('FORM');
+    const p = seg(lt, 0.2, 1.6);
+    const side = (name, form, tbl, color, x, y, id) => {
+      text(`${id}n`, upper(name), x, y, { size: SHORT ? 80 : 84, italic: true, color, reveal: eo(seg(lt, 0, 0.5)), maxW: SHORT ? 940 : 760 });
+      text(`${id}l`, 'LAST 5', x, y + 56, { size: 30, weight: 600, spacing: 4, color: C.dim, alpha: seg(lt, 0.2, 0.5) });
+      chips(x, y + 86, form, color, p, `${id}c`, SHORT ? 110 : 96);
+      const stat = tbl ? `${ord(tbl.position)} IN THE TABLE  ·  ${tbl.points} PTS  ·  GD ${tbl.gd > 0 ? '+' : ''}${tbl.gd}` : `${formPts(form)} OF ${String(form || '').length * 3} POINTS FROM THE LAST ${String(form || '').length}`;
+      text(`${id}s`, stat, x, y + (SHORT ? 270 : 250), { size: 38, weight: 600, spacing: 2, color: C.chalk, reveal: eo(seg(lt, 1.5, 2.1)), maxW: SHORT ? 940 : 760 });
+    };
+    if (SHORT) {
+      text('fT', 'RECENT FORM', 540, 420, { size: 92, italic: true, align: 'center', reveal: eo(seg(lt, 0, 0.4)) });
+      side(m.home, m.form?.home, m.table?.home, C.home, 70, 640, 'fh'); side(m.away, m.form?.away, m.table?.away, C.away, 70, 1180, 'fa');
+    }
+    else { side(m.home, m.form?.home, m.table?.home, C.home, 140, 380, 'fh'); side(m.away, m.form?.away, m.table?.away, C.away, 1040, 380, 'fa'); rect(959, 330, 2, 420, C.chalk, 0.15); }
+  } };
+}
+
+// Top-down pitch (105 × 68) with chalk lines drawn on by a sweep, territory split by win
+// probability, and the expected goals counting up at each end.
+function pitch(px, py, pw, lt, m, vertical) {
+  const ph = pw * 68 / 105;
+  const P = vertical
+    ? (x, y) => [px + (68 - y) / 68 * ph, py + (105 - x) / 105 * pw]   // home attacks up the screen
+    : (x, y) => [px + x / 105 * pw, py + y / 68 * ph];
+  const [bx0, by0] = P(0, 0), [bx1, by1] = P(105, 68);
+  const box = [Math.min(bx0, bx1), Math.min(by0, by1), Math.abs(bx1 - bx0), Math.abs(by1 - by0)];
+  rect(box[0], box[1], box[2], box[3], '#11201A');
+  // stripes
+  for (let i = 0; i < 12; i++) if (i % 2) { const [sx, sy] = P(i * 105 / 12, 0), [ex, ey] = P((i + 1) * 105 / 12, 68); rect(Math.min(sx, ex), Math.min(sy, ey), Math.abs(ex - sx), Math.abs(ey - sy), '#142720'); }
+  // territory
+  const pr = m.model.probs, terr = eo(seg(lt, 1.0, 2.2));
+  const hx = 52.5 - (52.5 * terr) + 105 * pr.home * terr, dx = hx + 105 * pr.draw * terr;
+  const band = (a, b, color, al) => { const [sx, sy] = P(a, 0), [ex, ey] = P(b, 68); rect(Math.min(sx, ex), Math.min(sy, ey), Math.abs(ex - sx), Math.abs(ey - sy), color, al); };
+  if (terr > 0) { band(0, hx, C.home, 0.22); band(hx, dx, C.chalk, 0.1); band(dx, 105, C.away, 0.22); }
+  // lines
+  const sweep = eio(seg(lt, 0, 0.9));
+  ctx.save(); ctx.beginPath();
+  if (vertical) ctx.rect(box[0] * U - 10, (box[1] + box[3] * (1 - sweep)) * U - 10, box[2] * U + 20, box[3] * sweep * U + 20);
+  else ctx.rect(box[0] * U - 10, box[1] * U - 10, box[2] * sweep * U + 20, box[3] * U + 20);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(244,241,232,0.85)'; ctx.lineWidth = 4 * U; ctx.lineCap = 'round';
+  const line = pts => { ctx.beginPath(); pts.forEach(([x, y], i) => { const [X, Y] = P(x, y); i ? ctx.lineTo(X * U, Y * U) : ctx.moveTo(X * U, Y * U); }); ctx.stroke(); };
+  line([[0, 0], [105, 0], [105, 68], [0, 68], [0, 0]]); line([[52.5, 0], [52.5, 68]]);
+  for (const g of [0, 105]) {
+    const s = g ? -1 : 1;
+    line([[g, 13.84], [g + s * 16.5, 13.84], [g + s * 16.5, 54.16], [g, 54.16]]);
+    line([[g, 24.84], [g + s * 5.5, 24.84], [g + s * 5.5, 43.16], [g, 43.16]]);
+    line([[g, 30.34], [g - s * 2, 30.34], [g - s * 2, 37.66], [g, 37.66]]);
+  }
+  const arc = (cx, cy, r, a0, a1) => { const pts = []; for (let i = 0; i <= 40; i++) { const a = a0 + (a1 - a0) * i / 40; pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } line(pts); };
+  arc(52.5, 34, 9.15, 0, Math.PI * 2);
+  arc(11, 34, 9.15, -0.93, 0.93); arc(94, 34, 9.15, Math.PI - 0.93, Math.PI + 0.93);
+  ctx.restore();
+  // xG counters at the end each side attacks
+  const c = eo(seg(lt, 1.4, 2.8));
+  const xgAt = (x, val, color, id, label) => {
+    const [X, Y] = P(x, 34);
+    rrect(X - 115, Y - 70, 230, 140, 14, 'rgba(8,12,14,0.88)', clamp(c * 3), { c: color, w: 3 });
+    text(`${id}l`, label, X, Y - 30, { size: 26, weight: 600, spacing: 3, align: 'center', color, alpha: clamp(c * 3), noRead: true, maxW: 200 });
+    text(`${id}v`, (val * c).toFixed(2), X, Y + 48, { size: 74, italic: true, align: 'center', color, alpha: clamp(c * 3), noRead: c < 1 });
+  };
+  // Each side's box sits in its own colour zone: home on the left (yellow), away on the right (cyan).
+  xgAt(19, m.model.xg.home, C.home, 'xgh', `${shortName(m.home)} xG`);
+  xgAt(86, m.model.xg.away, C.away, 'xga', `${shortName(m.away)} xG`);
+  return box;
+}
+
+function probBar(x, y, w, h, m, p, id) {
+  const pr = m.model.probs, parts = [[pr.home, C.home, upper(initials(m.home)), '#0C1411'], [pr.draw, '#3A4641', 'DRAW', C.chalk], [pr.away, C.away, upper(initials(m.away)), '#0C1411']];
+  let cx = x;
+  parts.forEach(([v, col, lab, ink], i) => {
+    const ww = w * v * eo(p);
+    rect(cx, y, Math.max(0, ww - 4), h, col);
+    if (ww > 120 && p >= 1) {
+      const numW = text(`${id}${i}`, pct(v), cx + 18, y + h * 0.72, { size: h * 0.62, italic: true, color: ink });
+      // The small team/DRAW tag only when it fits beside the number.
+      if (ww - numW - 36 > measure(lab, h * 0.32, 600, false) + 2 * lab.length + 10)
+        text(`${id}${i}l`, lab, cx + ww - 18, y + h * 0.66, { size: h * 0.32, weight: 600, spacing: 2, align: 'right', color: ink, alpha: 0.75, noRead: true });
+    }
+    cx += ww;
+  });
+}
+
+function scenePitch(m, k) {
+  return { id: `pitch${k}`, dur: 5.6, section: `m${k}`, draw(lt) {
+    bug('THE MODEL');
+    if (SHORT) {
+      text('ph', 'EXPECTED GOALS', 540, 300, { size: 74, italic: true, align: 'center', reveal: eo(seg(lt, 0, 0.4)) });
+      pitch(150, 380, 1180, lt, m, true);
+      text('pb', 'WIN CHANCE', 70, 1660, { size: 32, weight: 600, spacing: 4, color: C.dim, alpha: seg(lt, 2.4, 2.7) });
+      probBar(70, 1690, 940, 120, m, seg(lt, 2.6, 3.4), 'pbar');
+      return;
+    }
+    text('ph', 'EXPECTED GOALS & WIN CHANCE', 120, 160, { size: 70, italic: true, reveal: eo(seg(lt, 0, 0.4)) });
+    text('ps', m.model.blend ? 'MODEL BLENDED WITH THE MARKET (CROSS-LEAGUE)' : 'DIXON-COLES MODEL · TWO SEASONS OF RESULTS', 124, 206, { size: 28, weight: 600, spacing: 3, color: C.dim, reveal: eo(seg(lt, 0.3, 0.8)) });
+    pitch(410, 245, 1100, lt, m, false);
+    probBar(410, 978, 1100, 76, m, seg(lt, 2.6, 3.4), 'pbar');
+  } };
+}
+
+function sceneGrid(m, k) {
+  return { id: `grid${k}`, dur: 5.6, section: `m${k}`, draw(lt) {
+    bug('SCORELINE');
+    const mat = m.model.matrix || [];
+    const n = 5, cell = SHORT ? 172 : 128, gx = SHORT ? 110 : 760, gy = SHORT ? 560 : 250;
+    let mx = 0; mat.slice(0, n).forEach(r => r.slice(0, n).forEach(v => { mx = Math.max(mx, v); }));
+    if (SHORT) text('gh', 'MOST LIKELY SCORE', 540, 300, { size: 80, italic: true, align: 'center', reveal: eo(seg(lt, 0, 0.4)) });
+    else {
+      text('gh', 'MOST LIKELY', 120, 330, { size: 92, italic: true, reveal: eo(seg(lt, 0, 0.4)) });
+      text('gh2', 'SCORELINES', 120, 420, { size: 92, italic: true, color: C.home, reveal: eo(seg(lt, 0.15, 0.55)) });
+    }
+    text('gx', `${shortName(m.away)} GOALS →`, gx, gy - 24, { size: 30, weight: 600, spacing: 3, color: C.away, alpha: seg(lt, 0.3, 0.6), noRead: true });
+    // Rows count home goals downwards, so the label reads top to bottom.
+    ctx.save(); ctx.translate((gx - 46) * U, gy * U); ctx.rotate(Math.PI / 2);
+    ctx.font = `600 ${30 * U}px ${FONT}`; ctx.letterSpacing = `${3 * U}px`; ctx.fillStyle = C.home; ctx.globalAlpha = seg(lt, 0.3, 0.6); ctx.fillText(`${shortName(m.home)} GOALS →`, 0, 0); ctx.restore();
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      const v = mat[i]?.[j] || 0, d = (i + j) * 0.06, q = eo(seg(lt, 0.4 + d, 0.75 + d));
+      const col = i > j ? C.home : i === j ? C.chalk : C.away;
+      rect(gx + j * cell + 3, gy + i * cell + 3, cell - 6, cell - 6, '#16211D', q);
+      rect(gx + j * cell + 3, gy + i * cell + 3, cell - 6, cell - 6, col, q * (0.08 + 0.75 * v / (mx || 1)));
+      text(`gc${i}${j}`, `${i}-${j}`, gx + j * cell + cell / 2, gy + i * cell + cell * 0.45, { size: cell * 0.26, weight: 600, align: 'center', color: v / (mx || 1) > 0.55 ? '#0C1411' : C.chalk, alpha: q * 0.9, noRead: true });
+      text(`gp${i}${j}`, `${(v * 100).toFixed(v >= 0.1 ? 0 : 1)}%`, gx + j * cell + cell / 2, gy + i * cell + cell * 0.8, { size: cell * 0.2, weight: 600, align: 'center', color: v / (mx || 1) > 0.55 ? '#0C1411' : C.dim, alpha: q * 0.9, noRead: true });
+    }
+    (m.model.scores || []).slice(0, 3).forEach((s, r) => {
+      const [h, a] = s.score.split('-').map(Number);
+      if (h >= n || a >= n) return;
+      const p = seg(lt, 1.9 + r * 0.45, 2.4 + r * 0.45);
+      if (p > 0) ring(gx + a * cell + cell / 2, gy + h * cell + cell / 2, cell * 0.55, C.red, eo(p));
+      const ly = SHORT ? 1520 + r * 90 : 560 + r * 86;
+      const lx = SHORT ? 110 : 124;
+      text(`gs${r}`, `${r + 1}.  ${s.score}`, lx, ly, { size: SHORT ? 64 : 58, italic: true, color: r ? C.chalk : C.red, reveal: eo(seg(lt, 2.1 + r * 0.45, 2.5 + r * 0.45)) });
+      text(`gsp${r}`, pct(s.p), lx + (SHORT ? 330 : 250), ly, { size: SHORT ? 64 : 58, italic: true, color: C.dim, reveal: eo(seg(lt, 2.2 + r * 0.45, 2.6 + r * 0.45)) });
+    });
+  } };
+}
+
+function sceneMarket(m, k) {
+  return { id: `market${k}`, dur: 5.1, section: `m${k}`, draw(lt) {
+    bug('V BOOKIES');
+    text('mh', 'MODEL v BOOKIES', SHORT ? 70 : 120, SHORT ? 340 : 190, { size: SHORT ? 92 : 86, italic: true, reveal: eo(seg(lt, 0, 0.4)) });
+    text('ms', `${m.odds.bookmaker.toUpperCase()} ODDS ${m.odds.home} / ${m.odds.draw} / ${m.odds.away}  ·  OVERROUND REMOVED`, SHORT ? 74 : 124, SHORT ? 400 : 240, { size: 30, weight: 600, spacing: 2, color: C.dim, reveal: eo(seg(lt, 0.2, 0.7)), maxW: SHORT ? 940 : 1600 });
+    const rows = [['home', upper(m.home), C.home], ['draw', 'DRAW', C.chalk], ['away', upper(m.away), C.away]];
+    const x = SHORT ? 70 : 120, wMax = SHORT ? 760 : 1180, y0 = SHORT ? 520 : 320, step = SHORT ? 400 : 230;
+    rows.forEach(([key, lab, col], i) => {
+      const y = y0 + i * step, p = eo(seg(lt, 0.5 + i * 0.35, 1.3 + i * 0.35));
+      const mv = m.model.probs[key], bv = m.market[key];
+      text(`ml${i}`, lab, x, y, { size: 52, italic: true, color: col, reveal: p, maxW: SHORT ? 940 : 900 });
+      rect(x, y + 22, wMax * mv * p, 54, col);
+      text(`mm${i}`, `MODEL ${pct(mv)}`, x + wMax * mv * p + 16, y + 64, { size: 40, italic: true, color: col, alpha: seg(lt, 1.2 + i * 0.35, 1.4 + i * 0.35) });
+      rrect(x, y + 92, Math.max(1, wMax * bv * p), 42, 0, null, 1, { c: C.dim, w: 3 });
+      text(`mb${i}`, `BOOKIES ${pct(bv)}`, x + wMax * bv * p + 16, y + 126, { size: 34, weight: 600, color: C.dim, alpha: seg(lt, 1.2 + i * 0.35, 1.4 + i * 0.35) });
+    });
+  } };
+}
+
+function sceneAngles(m, k) {
+  const list = (m.angles || []).filter(a => !/^Cross-league tie/.test(a)).slice(0, 2);
+  if (m.crossLeague && list.length < 2) list.push('Cross-league tie: numbers blend the model with the bookies.');
+  // Long enough for each card to be read: it appears at 0.8 + 1.2·i s and needs chars/15 + 1.5 s.
+  const dur = Math.max(3, ...list.map((a, i) => 0.8 + 1.2 * i + a.replace(/\s/g, '').length / 15 + 1.7));
+  return { id: `angles${k}`, dur, section: `m${k}`, draw(lt) {
+    bug('THE ANGLE');
+    text('ah', 'THE ANGLE', SHORT ? 70 : 120, SHORT ? 420 : 230, { size: SHORT ? 110 : 96, italic: true, color: C.home, reveal: eo(seg(lt, 0, 0.4)) });
+    list.forEach((a, i) => {
+      const warn = /upset|danger|caution|low data|cross-league/i.test(a);
+      const maxW = SHORT ? 860 : 1500, size = SHORT ? 76 : 58;
+      const lines = wrap(a, maxW, size).slice(0, SHORT ? 4 : 2);
+      const hh = lines.length * size * 1.2 + 50, y = (SHORT ? 680 : 330) + i * (SHORT ? 480 : 250);
+      const p = eo(seg(lt, 0.4 + i * 1.2, 0.8 + i * 1.2));
+      if (p <= 0) return;
+      ctx.save(); ctx.translate((1 - p) * -50 * U, 0); ctx.globalAlpha = p;
+      rect(SHORT ? 70 : 120, y, (SHORT ? 940 : 1680), hh, C.card);
+      rect(SHORT ? 70 : 120, y, 10, hh, warn ? C.red : C.home);
+      ctx.restore();
+      lines.forEach((ln, j) => text(`an${i}${j}`, ln, (SHORT ? 110 : 170), y + 22 + size * (1 + j * 1.2), { size, color: C.chalk, alpha: p }));
+    });
+  } };
+}
+
+function sceneTable() {
+  const t = TABLE; if (!t) return null;
+  const rows = t.rows.slice(0, 10);
+  const extra = t.rows.filter(r => r.position > 10 && t.highlight.has(r.team));
+  return { id: 'table', dur: 7.5, section: 'table', draw(lt) {
+    bug('TABLE');
+    text('tth', upper(t.name), 120, 150, { size: 76, italic: true, reveal: eo(seg(lt, 0, 0.4)) });
+    text('tts', 'THE STANDINGS BEHIND TODAY\'S GAMES', 124, 196, { size: 28, weight: 600, spacing: 3, color: C.dim, reveal: eo(seg(lt, 0.3, 0.7)) });
+    const cols = [['P', 1140], ['W', 1240], ['D', 1340], ['L', 1440], ['GD', 1560], ['PTS', 1740]];
+    cols.forEach(([c, x]) => text(`thc${c}`, c, x, 262, { size: 28, weight: 600, spacing: 2, color: C.dim, align: 'center', alpha: seg(lt, 0.3, 0.6), noRead: true }));
+    const all = [...rows, ...(extra.length ? [null, ...extra] : [])];
+    all.forEach((r, i) => {
+      const y = 280 + i * 66, p = eo(seg(lt, 0.4 + i * 0.09, 0.8 + i * 0.09));
+      if (!r) { text('tgap', '···', 160, y + 44, { size: 40, color: C.dim, alpha: p, noRead: true }); return; }
+      const hl = t.highlight.get(r.team);
+      ctx.save(); ctx.translate((1 - p) * 40 * U, 0); ctx.globalAlpha = p;
+      rect(120, y, 1680, 58, hl ? 'rgba(255,255,255,0.06)' : 'rgba(8,12,14,0.6)');
+      if (hl) rect(120, y, 8, 58, hl);
+      ctx.restore();
+      const col = hl || C.chalk;
+      text(`tr${i}p`, String(r.position), 175, y + 44, { size: 40, italic: true, align: 'center', color: col, alpha: p, noRead: true });
+      text(`tr${i}t`, upper(r.team), 240, y + 44, { size: 40, color: col, alpha: p, maxW: 820 });
+      [[r.played, 1140], [r.won, 1240], [r.draw, 1340], [r.lost, 1440], [(r.gd > 0 ? '+' : '') + r.gd, 1560], [r.points, 1740]].forEach(([v, x], j) =>
+        text(`tr${i}c${j}`, String(v), x, y + 44, { size: j === 5 ? 44 : 38, italic: j === 5, weight: j === 5 ? 700 : 600, align: 'center', color: j === 5 ? (hl || C.home) : C.chalk, alpha: p, noRead: j !== 5 }));
+    });
+  } };
+}
+
+function scenePicks() {
+  const picks = [...B.picks.value.map(p => ({ ...p, kind: 'VALUE' })), ...B.picks.safest.map(p => ({ ...p, kind: 'SAFEST' }))].slice(0, 4);
+  return { id: 'picks', dur: 10, section: 'picks', draw(lt) {
+    bug('PICKS');
+    text('kh', 'PICKS OF THE DAY', 120, 170, { size: 92, italic: true, reveal: eo(seg(lt, 0, 0.4)) });
+    if (!picks.length) {
+      text('kn', 'NO VALUE BETS TODAY', 120, 420, { size: 110, italic: true, color: C.red, reveal: eo(seg(lt, 0.5, 1)) });
+      text('kn2', 'The model only flags a pick when it beats the bookies by 4+ points.', 124, 500, { size: 46, weight: 600, color: C.chalk, reveal: eo(seg(lt, 1, 1.6)) });
+    }
+    picks.forEach((p, i) => {
+      const y = 250 + i * 150, q = eo(seg(lt, 0.4 + i * 0.4, 0.9 + i * 0.4));
+      if (q <= 0) return;
+      ctx.save(); ctx.globalAlpha = q; ctx.translate((1 - q) * -50 * U, 0);
+      rect(120, y, 1680, 128, C.card); rect(120, y, 10, 128, p.kind === 'VALUE' ? C.home : C.away);
+      ctx.restore();
+      text(`kk${i}`, p.kind, 160, y + 50, { size: 30, weight: 600, spacing: 4, color: p.kind === 'VALUE' ? C.home : C.away, alpha: q });
+      text(`kl${i}`, upper(p.label), 160, y + 104, { size: 54, italic: true, alpha: q, maxW: 900 });
+      text(`km${i}`, upper(p.match), 1100, y + 52, { size: 30, weight: 600, spacing: 1, color: C.dim, alpha: q, maxW: 680 });
+      text(`ko${i}`, `${p.odds ? '@ ' + p.odds + '  ·  ' : ''}MODEL ${pct(p.model)}${p.bookmaker != null ? '  ·  MARKET ' + pct(p.bookmaker) : ''}`, 1100, y + 104, { size: 40, italic: true, color: C.chalk, alpha: q, maxW: 680 });
+    });
+    disclaimer(lt, 0.3, 120, 900, 1680);
+  } };
+}
+
+function disclaimer(lt, at, x, y, w, size = 32) {
+  const q = eo(seg(lt, at, at + 0.4)), lines = wrap(B.disclaimer, w - 80, size, 600);
+  const h = lines.length * size * 1.3 + 36;
+  rect(x, y, w, h, 'rgba(255,59,48,0.12)', q); rect(x, y, 6, h, C.red, q);
+  lines.forEach((ln, i) => text(`disc${i}`, ln, x + 30, y + 18 + size * (1 + i * 1.3), { size, weight: 600, color: C.chalk, alpha: q }));
+}
+
+function sceneEnd() {
+  return { id: 'end', dur: SHORT ? 7.2 : 9.2, section: 'end', draw(lt) {
+    const cx = SHORT ? 540 : 960, cy = SHORT ? 700 : 400, sz = SHORT ? 130 : 140;
+    const a = eo(seg(lt, 0, 0.4));
+    text('e1', 'PITCH', cx, cy, { size: sz, italic: true, align: 'center', alpha: a });
+    const ew = measure('PROPHET', sz) + sz * 0.5;
+    rect(cx - ew / 2, cy + sz * 0.15, ew, sz * 1.0, C.home, a);
+    text('e2', 'PROPHET', cx, cy + sz * 0.97, { size: sz, italic: true, align: 'center', color: '#0C1411', alpha: a });
+    if (SHORT) {
+      text('e3', 'FULL BREAKDOWN', cx, 1120, { size: 96, italic: true, align: 'center', color: C.chalk, reveal: eo(seg(lt, 0.5, 1)) });
+      text('e4', 'ON YOUTUBE', cx, 1220, { size: 96, italic: true, align: 'center', color: C.home, reveal: eo(seg(lt, 0.7, 1.2)) });
+      disclaimer(lt, 1.0, 70, 1480, 940, 34);
+    } else {
+      text('e3', "TOMORROW'S CALL DROPS BEFORE KICK-OFF", cx, 690, { size: 60, italic: true, align: 'center', reveal: eo(seg(lt, 0.5, 1.1)) });
+      text('e4', 'SUBSCRIBE  ·  FOLLOW  ·  CHECK OUR TRACK RECORD', cx, 760, { size: 38, weight: 600, spacing: 4, align: 'center', color: C.home, reveal: eo(seg(lt, 0.9, 1.4)) });
+      disclaimer(lt, 1.2, 360, 860, 1200, 30);
+    }
+  } };
+}
+
+// Short only: the hook — the model's headline number, said in the first second.
+function sceneHook(m) {
+  const fav = m.model.probs.home >= m.model.probs.away ? ['home', m.home, C.home] : ['away', m.away, C.away];
+  return { id: 'hook', dur: 4.8, section: 'hook', draw(lt) {
+    bug(dayLabel(B.date).slice(5, 11));
+    text('hk1', "THE MODEL'S CALL", 540, 430, { size: 60, weight: 600, spacing: 6, align: 'center', color: C.dim, reveal: eo(seg(lt, 0, 0.3)) });
+    text('hk2', `${upper(m.home)} v ${upper(m.away)}`, 540, 540, { size: 74, italic: true, align: 'center', reveal: eo(seg(lt, 0.1, 0.5)), maxW: 980 });
+    const pop = back(seg(lt, 0.4, 0.9));
+    ctx.save(); ctx.translate(540 * U, 900 * U); ctx.scale(lerp(0.5, 1, pop), lerp(0.5, 1, pop)); ctx.translate(-540 * U, -900 * U);
+    text('hk3', pct(m.model.probs[fav[0]]), 540, 1000, { size: 380, italic: true, align: 'center', color: fav[2], alpha: seg(lt, 0.4, 0.55), shadow: true });
+    ctx.restore();
+    // "to win" only when the model actually makes them more likely than not; otherwise say what it is.
+    text('hk4', m.model.probs[fav[0]] > 0.5 ? `${upper(fav[1])} TO WIN` : `WIN CHANCE · ${upper(fav[1])}`, 540, 1130, { size: 84, italic: true, align: 'center', color: fav[2], reveal: eo(seg(lt, 0.9, 1.4)), maxW: 980 });
+    const sc = m.model.scores?.[0];
+    if (sc) text('hk5', `MOST LIKELY SCORE ${sc.score}`, 540, 1250, { size: 56, weight: 600, spacing: 3, align: 'center', color: C.chalk, reveal: eo(seg(lt, 1.4, 1.9)) });
+  } };
+}
+
+// ---------- assemble ----------
+function build() {
+  const n = Math.max(1, Math.min(5, Number(Q.get('n')) || 3));
+  const withModel = B.matches.filter(m => m.model);
+  MATCHES = B.matches.slice();
+  const shown = withModel.slice(0, n);
+  const sc = [];
+  if (SHORT) {
+    const pick = Q.get('match') ? withModel.find(m => m.id === Q.get('match')) : withModel[0];
+    if (!pick) throw new Error('briefing has no match with a model prediction');
+    sc.push(sceneHook(pick), scenePitch(pick, 0), sceneGrid(pick, 0), sceneForm(pick, 0), sceneAngles(pick, 0), sceneEnd());
+  } else {
+    sc.push(sceneSting(), sceneRundown());
+    shown.forEach((m, k) => {
+      sc.push(sceneTitle(m, k), sceneForm(m, k), scenePitch(m, k), sceneGrid(m, k));
+      if (m.market?.home != null && m.odds) sc.push(sceneMarket(m, k));
+      sc.push(sceneAngles(m, k));
+    });
+    // Table: the league with the most of the shown teams in it.
+    const tables = B.tables || {};
+    const pickTable = Object.entries(tables).map(([name, rows]) => {
+      const hl = new Map();
+      for (const m of shown) for (const [side, col] of [['home', C.home], ['away', C.away]]) if (rows.some(r => r.team === m[side])) hl.set(m[side], col);
+      return { name, rows, highlight: hl };
+    }).sort((a, b) => b.highlight.size - a.highlight.size)[0];
+    if (pickTable && pickTable.highlight.size) { TABLE = pickTable; sc.push(sceneTable()); }
+    sc.push(scenePicks(), sceneEnd());
+  }
+  let t = 0; TIMELINE = [];
+  for (const s of sc.filter(Boolean)) { TIMELINE.push({ ...s, t0: t, newSection: TIMELINE.length && TIMELINE[TIMELINE.length - 1].section !== s.section }); t += s.dur; }
+  window.DUR = Math.round(t * 100) / 100;
+  window.EV = TIMELINE.map(s => ({ t: s.t0, type: s.newSection ? 'wipe' : 'cut', scene: s.id }));
+}
+
+window.render = t => {
+  TXT = [];
+  board(t);
+  const i = Math.max(0, TIMELINE.findIndex((s, k) => t >= s.t0 && (k === TIMELINE.length - 1 || t < TIMELINE[k + 1].t0)));
+  const s = TIMELINE[i];
+  ctx.save(); s.draw(t - s.t0, s.dur); ctx.restore();
+  for (const x of TIMELINE) if (x.newSection) wipe(t, x.t0);
+  return true;
+};
+window.TEXTS = t => { window.render(t); return TXT; };
+
+(async () => {
+  const src = Q.get('briefing') || 'briefing.json';
+  B = await (await fetch(src)).json();
+  await Promise.all([document.fonts.load(`700 40px "Barlow PP"`), document.fonts.load(`600 40px "Barlow PP"`)]);
+  build();
+  window.render(0);
+  window.READY = true;
+})();
+</script>
+</body></html>
