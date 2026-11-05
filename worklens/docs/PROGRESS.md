@@ -927,7 +927,15 @@ your machine:
 - `src/poster.js` and the Content screen's **📨 Posting bot** strip: it auto-schedules Edited cards at 11:00/19:00 per
   brand and gives each brand its own post number. New `content_items` columns: `post_no`, `tg_file_id`, `poster_note`.
 - `brand-poster/` (Vercel Hobby project franklymade-hq/brand-poster): the queue is in Vercel Blob,
-  `/api/queue`, `/api/tick` (cron-job.org every 10 minutes), `/api/telegram` (webhook: /start, Mark as posted),
+  `/api/queue`, `/api/tick` (cron-job.org at 11:00, 11:15, 19:00 and 19:15 Lagos time), `/api/telegram` (webhook: /start, Mark as posted),
   `/api/sync` and `/api/health`.
-- Done: deploy, keys, bot token, webhook. Still needed: CHAT_ID (send /start to the bot) and the cron-job.org job.
+- Done: deploy, keys, bot token, chat id, webhook, cron-job.org job. Coded Film #001/#002 queued for 2026-11-05 11:00/19:00.
 - Descriptions are written from keywords taken from each video, to help discovery.
+
+## TestLoop bot moved to Vercel
+
+- `testloop-cloud/` is the same logic as `testloop-bot/bot.js`. Long polling became a webhook, `setInterval` became
+  cron-job.org (20:05 UTC), and SQLite became one JSON file in Vercel Blob.
+- Same HTTP paths (`/health`, `/sync`, `/admin/...`) and the same `SYNC_TOKEN`, so WorkLens only changed its URL.
+- 1 tester imported; the local bot is stopped and must stay stopped.
+- The WorkLens TestLoop sync went from 2 to 10 minutes, and the posting bot sync from 5 to 15, to stay inside Blob's free reads.

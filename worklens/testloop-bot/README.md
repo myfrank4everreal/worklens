@@ -1,3 +1,5 @@
+> **Now hosted on Vercel:** see `../testloop-cloud/README.md`. Don't run this local bot while the cloud webhook is set.
+
 # TestLoop bot
 
 The tester-facing half of TestLoop. It runs in the cloud so it answers 24/7, and WorkLens

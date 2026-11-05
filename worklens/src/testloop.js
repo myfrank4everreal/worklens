@@ -10,7 +10,7 @@ import { aiConfigured, scoreTesterFeedback } from './openrouter.js';
 export const STATUSES = ['pending', 'active', 'need_proof', 'strike_1', 'strike_2', 'removed', 'completed'];
 const STRIKES = { strike_1: 1, strike_2: 2, removed: 3 };
 const GMAIL = /^[^\s@]+@gmail\.com$/i;
-const SYNC_EVERY = 2 * 60 * 1000;
+const SYNC_EVERY = 10 * 60 * 1000;   // the cloud bot reads its Vercel Blob file per call: Hobby allows 10,000 reads a month
 let lastSyncError = '';
 
 function slugify(name) { return String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'app'; }

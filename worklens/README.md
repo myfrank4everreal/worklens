@@ -265,7 +265,8 @@ video under 50 MB is scheduled automatically (`src/poster.js`, every 5 minutes w
 - **Telegram:** the video is uploaded once to the bot (@Workstation_poster_bot), silently, and its file
   id is kept (`tg_file_id`). The post is queued on the cloud bot, **brand-poster** on Vercel
   (`brand-poster/`, https://brand-poster.vercel.app), and the card moves to **Scheduled**.
-- **At post time:** cron-job.org calls the cloud bot every 10 minutes. It sends the video, then the
+- **At post time:** cron-job.org calls the cloud bot at the slots (`0,15 11,19 * * *`, Africa/Lagos; the :15
+  calls retry anything that failed). It sends the video, then the
   copy-ready text (brand, post number, title, description, hashtags) with a **✅ Mark as posted** button.
   Tapping it moves the card to **Posted** next time Workstation syncs.
 - **Copy rule:** every description is written from discovery keywords taken from the video itself (the
@@ -278,6 +279,24 @@ video under 50 MB is scheduled automatically (`src/poster.js`, every 5 minutes w
 
 Endpoints: `GET /api/poster`, `POST /api/poster/settings`, `POST /api/poster/run`,
 `POST /api/poster/webhook`.
+
+**Free-plan limits (Vercel Blob on Hobby).** Each month you get 2,000 writes/listings and 10,000 reads, and that
+allowance is shared by brand-poster and testloop-cloud. If you go over, the store pauses for 30 days rather than
+charging you. To stay inside it:
+- The queue is one file, written only when a post changes.
+- cron-job.org calls only at the slot times.
+- Workstation syncs the posting bot every 15 minutes and TestLoop every 10.
+- Don't shorten these intervals.
+
+## Workstation · TestLoop bot in the cloud
+
+The TestLoop Telegram bot runs on Vercel at https://testloop-cloud.vercel.app (`testloop-cloud/`), not on this PC.
+Telegram sends its messages there by webhook. cron-job.org runs the nightly strikes/reminder pass at
+`5 20 * * *` UTC (21:05 WAT) via `/api/tick?key=CRON_SECRET`. The data is one JSON file in the Blob store `testloop-db`.
+WorkLens → TestLoop is connected to that URL with the same `SYNC_TOKEN`.
+- **Don't start the local `testloop-bot/` while the webhook is set.**
+- The daily "testloop-daily-check" task checks `/health`.
+- Details are in `testloop-cloud/README.md`.
 
 ## Workstation · Social connections
 

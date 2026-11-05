@@ -3,7 +3,7 @@
 Sends each scheduled brand post to your Telegram at its time, even when this PC is off.
 
 ```
-Workstation (PC) ──queue──▶ brand-poster (Vercel Hobby) ◀──every 10 min── cron-job.org
+Workstation (PC) ──queue──▶ brand-poster (Vercel Hobby) ◀──at the slots── cron-job.org
   uploads the video to       posts in Vercel Blob            /api/tick?key=CRON_SECRET
   Telegram once (file id)          │
                                    └─▶ Telegram: video + title, description, hashtags,
@@ -11,7 +11,8 @@ Workstation (PC) ──queue──▶ brand-poster (Vercel Hobby) ◀──every
 ```
 
 Everything runs on free plans: Vercel Hobby (functions + Blob store `brand-poster-queue`) and cron-job.org.
-No Upstash and no paid cron.
+No Upstash and no paid cron. The queue is a single `queue.json`, because Blob on Hobby allows only 2,000
+writes/listings a month. Reads by URL count against a separate 10,000.
 
 ## How a post flows
 
@@ -19,7 +20,7 @@ No Upstash and no paid cron.
 2. Within 5 minutes Workstation gives it the brand's next free slot (**11:00** or **19:00**, local time) and the
    brand's next post number. It uploads the video to Telegram once (silently, then deletes that message: the
    file id stays valid) and queues the post here. The card moves to **Scheduled**.
-3. cron-job.org calls `/api/tick` every 10 minutes. Due posts are sent to your chat: the video, then the
+3. cron-job.org calls `/api/tick` at `0,15 11,19 * * *` (Africa/Lagos). Due posts are sent to your chat: the video, then the
    copy-ready text with a **✅ Mark as posted** button.
 4. Tapping the button marks it posted; Workstation pulls that through `/api/sync` and moves the card to **Posted**.
 
