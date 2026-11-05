@@ -15,10 +15,24 @@ try {
     // next slot (refusing any slot after the card's post-by time) and sends it to Telegram.
     const date = args[0] || localDate();
     const os = await import('node:os'), fs = await import('node:fs'), path = await import('node:path');
-    const { db } = await import('../src/db.js');
-    const { seedSportsBrand } = await import('../src/brands.js');
-    seedSportsBrand();
+    // The cards must land in the database of the workstation that actually runs the posting bot: the
+    // installed app keeps its own in %APPDATA%\worklens\data, separate from this repo's data/ folder.
+    // Opened directly (not through src/db.js) so a newer source tree doesn't run its migrations on
+    // the installed app's live database; only the one column this needs is added.
+    const { DatabaseSync } = await import('node:sqlite');
+    const appDb = path.join(process.env.APPDATA || '', 'worklens', 'data', 'worklens.db');
+    const dbFile = process.env.WORKLENS_DATA_DIR ? path.join(process.env.WORKLENS_DATA_DIR, 'worklens.db') : fs.existsSync(appDb) ? appDb : path.resolve('data', 'worklens.db');
+    const db = new DatabaseSync(dbFile);
+    db.exec('PRAGMA busy_timeout = 8000');
+    console.log(`Workstation database: ${dbFile}`);
+    try { db.exec('ALTER TABLE content_items ADD COLUMN post_by TEXT'); } catch (e) { if (!String(e.message).includes('duplicate column')) throw e; }
+    if (!db.prepare('SELECT 1 FROM brands WHERE lower(name)=lower(?)').get('Pitch Prophet')) {
+      db.prepare('INSERT INTO brands(name,color,description,sort) VALUES(?,?,?,(SELECT COALESCE(MAX(sort),-1)+1 FROM brands))')
+        .run('Pitch Prophet', '#16A34A', 'Football brand: daily data-driven match analysis and predictions (YouTube 16:9), plus shorts on TikTok/IG/YT. Every betting post carries the 18+ disclaimer.');
+      console.log('Added the Pitch Prophet brand.');
+    }
     const brand = db.prepare('SELECT id FROM brands WHERE lower(name)=lower(?)').get('Pitch Prophet');
+    db.prepare('INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)').run(`poster_slots_${brand.id}`, '11:00,13:00,17:00,19:00');
     const lemo = process.env.LEMO_DIR || path.join(os.homedir(), 'Documents', 'socialmedia', 'AI Video Editor', 'lemo-opuscar');
     for (const format of ['long', 'short']) {
       const file = path.join(lemo, 'films', `pitch-prophet-${date}-${format}`, 'post.json');
