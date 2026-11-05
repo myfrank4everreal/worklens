@@ -32,6 +32,7 @@ const STORE_TIPS = {
 let hub = null, content = null, places = null, library = [], brandsData = null;
 let contentMode = (() => { try { return localStorage.getItem('wl-content-mode') || 'board'; } catch { return 'board'; } })();
 let brandFilter = 0, onSubmit = null, poster = null, posterOpen = false;
+let contentStage = (() => { try { return localStorage.getItem('wl-content-stage') || ''; } catch { return ''; } })();
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 function toast(text) { const el = document.querySelector('#toast'); el.textContent = text; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2200); }
@@ -170,13 +171,17 @@ function posterStrip() {
       ${p.cronUrl ? `<label class="poster-cron">cron-job.org address (every 10 minutes)<span><input readonly value="${esc(p.cronUrl)}"><button type="button" data-poster-copy>Copy</button></span></label>` : ''}</form>` : ''}</div>`;
 }
 
+// Board: one stage at a time behind tabs, so cards get the full width instead of six narrow columns.
 function board(items) {
-  return `<div class="content-board">${STAGE_ORDER.map(stage => {
-    const list = items.filter(i => i.stage === stage);
-    const shown = stage === 'posted' ? list.slice(0, 12) : list;
-    return `<div class="content-col"><div class="content-col-head"><strong>${esc(content.stages[stage])}</strong><em>${list.length}</em></div><small>${STAGE_HINT[stage]}</small>
-      ${shown.map(contentCard).join('') || '<div class="content-empty">—</div>'}${list.length > shown.length ? `<small>${list.length - shown.length} older in Schedule</small>` : ''}</div>`;
-  }).join('')}</div>`;
+  const counts = Object.fromEntries(STAGE_ORDER.map(st => [st, items.filter(i => i.stage === st).length]));
+  if (!STAGE_ORDER.includes(contentStage)) contentStage = STAGE_ORDER.find(st => st !== 'posted' && counts[st]) || 'idea';
+  const list = items.filter(i => i.stage === contentStage);
+  const shown = contentStage === 'posted' ? list.slice(0, 24) : list;
+  const tabs = STAGE_ORDER.map((st, n) => `<button class="stage-tab ${st === contentStage ? 'active' : ''} ${st}" data-content-stage="${st}" role="tab" aria-selected="${st === contentStage}"><span class="stage-num">${n + 1}</span><span class="stage-name">${esc(content.stages[st])}</span><em>${counts[st]}</em></button>`).join('');
+  return `<div class="stage-tabs" role="tablist">${tabs}</div>
+    <div class="stage-panel"><p class="stage-hint">${esc(STAGE_HINT[contentStage])}${list.length ? ` · ${list.length} item${list.length === 1 ? '' : 's'}` : ''}</p>
+      ${shown.length ? `<div class="content-grid">${shown.map(contentCard).join('')}</div>` : `<div class="card empty">Nothing in ${esc(content.stages[contentStage])}${brandFilter ? ' for this brand' : ''}.</div>`}
+      ${list.length > shown.length ? `<small class="stage-more">${list.length - shown.length} older posts are in Schedule.</small>` : ''}</div>`;
 }
 
 function contentCard(i) {
@@ -189,7 +194,7 @@ function contentCard(i) {
   return `<div class="card content-card ${i.overdue ? 'overdue' : ''}" style="--brand:${esc(brand?.color || 'var(--border-strong)')}">
     <button class="content-open" data-edit-content="${i.id}"><strong>${esc(i.title)}</strong>
       <span>${brand ? esc(brand.name) : 'No brand'}${i.scheduled_at ? ` · ${i.overdue ? 'overdue · ' : ''}${esc(when(i.scheduled_at))}` : ''}${i.posted_at ? ` · posted ${esc(ago(i.posted_at))}` : ''}</span>
-      ${i.caption ? `<p>${esc(i.caption.slice(0, 120))}</p>` : ''}${i.poster_note ? `<small class="poster-note">${i.post_no ? `#${String(i.post_no).padStart(3, '0')} · ` : ''}${esc(i.poster_note)}</small>` : ''}
+      ${i.caption ? `<p>${esc(i.caption.slice(0, 240))}${i.caption.length > 240 ? '…' : ''}</p>` : ''}${i.poster_note ? `<small class="poster-note">${i.post_no ? `#${String(i.post_no).padStart(3, '0')} · ` : ''}${esc(i.poster_note)}</small>` : ''}
       <span class="hub-badges">${accountBadges(i.accounts)}${i.hashtags ? `<em>${tagCount(i.hashtags)} tags</em>` : ''}${i.media ? '<em>▶ media</em>' : ''}${i.post_url ? '<em>link</em>' : ''}</span></button>
     <div class="content-actions">${action}${nextStage && i.stage !== 'scheduled' ? `<button class="icon-btn" title="Move to ${esc(content.stages[nextStage])}" data-content-next="${i.id}">→</button>` : ''}</div></div>`;
 }
@@ -408,9 +413,10 @@ async function onClick(e) {
   const t = e.target.closest('button'); if (!t) return;
   try {
     if (t.dataset.hubAct === 'new-content') return editContent(null);
-    if (t.dataset.openContent) { brandFilter = 0; contentMode = t.dataset.openContent === 'scheduled' || t.dataset.openContent === 'posted' ? 'schedule' : 'board'; document.querySelector('.nav[data-view="content"]')?.click(); return; }
+    if (t.dataset.openContent) { brandFilter = 0; contentMode = 'board'; if (STAGE_ORDER.includes(t.dataset.openContent)) contentStage = t.dataset.openContent; document.querySelector('.nav[data-view="content"]')?.click(); return; }
     if (t.dataset.editContent) return editContent(Number(t.dataset.editContent));
     if (t.dataset.contentBrand !== undefined) { brandFilter = Number(t.dataset.contentBrand); return renderContent(); }
+    if (t.dataset.contentStage) { contentStage = t.dataset.contentStage; try { localStorage.setItem('wl-content-stage', contentStage); } catch {} return renderContent(); }
     if (t.dataset.contentMode) { contentMode = t.dataset.contentMode; try { localStorage.setItem('wl-content-mode', contentMode); } catch {} return renderContent(); }
     if (t.dataset.contentCopy) return copyCaption(findItem(Number(t.dataset.contentCopy)));
     if (t.dataset.contentPosted) { t.disabled = true; await markPosted(Number(t.dataset.contentPosted)); return refreshAll(); }
