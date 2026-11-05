@@ -11,7 +11,7 @@ import { inspectProject, collectProject } from './project-analyzer.js';
 import { rollupEpisodes, embedPendingEpisodes, searchEpisodes } from './episodes.js';
 import { renderTextPdf } from './pdf.js';
 import { parsePlainTextPlan } from './plan-parser.js';
-import { brandsApi, seedBrandAccounts, seedBrands } from './brands.js';
+import { brandsApi, seedBrandAccounts, seedBrands, seedSportsBrand } from './brands.js';
 import { hubApi, seedHub } from './hub.js';
 import { socialApi, startSocialSync } from './social.js';
 import { testloopApi, seedTestloop, startTestloopSync } from './testloop.js';
@@ -768,6 +768,7 @@ async function maintainEpisodes() {
 
 seedBrands();
 seedBrandAccounts();
+seedSportsBrand();
 seedHub();
 startSocialSync();
 seedTestloop();

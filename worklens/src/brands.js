@@ -98,6 +98,17 @@ export function seedBrandAccounts() {
   setSetting('brand_accounts_seeded_v2', 'true');
 }
 
+// Third seed: the football brand. No accounts yet: the person creates the handles and adds them
+// in the Brand Command Center. Added once; deleting it by hand keeps it deleted.
+export function seedSportsBrand() {
+  if (getSetting('brand_sports_seeded_v1') === 'true') return;
+  if (!db.prepare('SELECT 1 FROM brands WHERE lower(name)=lower(?)').get('Pitch Prophet')) {
+    db.prepare('INSERT INTO brands(name,color,description,sort) VALUES(?,?,?,(SELECT COALESCE(MAX(sort),-1)+1 FROM brands))')
+      .run('Pitch Prophet', '#16A34A', 'Football brand: daily data-driven match analysis and predictions (YouTube 16:9), plus shorts on TikTok/IG/YT. Every betting post carries the 18+ disclaimer.');
+  }
+  setSetting('brand_sports_seeded_v1', 'true');
+}
+
 export function logToWorkLens(account, brand, action) {
   const platform = PLATFORMS[account.platform]?.label || account.platform;
   db.prepare('INSERT OR IGNORE INTO activities(captured_at,app_name,window_title,project_id,duration_seconds,confidence,source) VALUES(?,?,?,?,?,?,?)')
