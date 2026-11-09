@@ -81,6 +81,53 @@ To enable AI reports, copy `.env.example` to `.env`, add an OpenRouter API key, 
 
 The **Ask** view answers questions about your own tracked history — "what was I working on yesterday," "what's blocked on Project Atlas." Activity is rolled up locally into 5–20 minute episodes, embedded via OpenRouter, and retrieved by similarity when you ask a question; the model is told to answer only from the retrieved evidence and to say so plainly when it doesn't have enough. Each answer shows the specific evidence it used. Requires an OpenRouter key.
 
+## Overseer (voice)
+
+The **Overseer** screen answers questions about everything you have running: every Claude Code
+session in the Claude desktop app, plus WorkLens's projects, tasks and content pipeline. Ask by
+voice or by typing. It gives a short spoken summary first and leaves the detail on screen.
+
+- **To start it talking:** clap once (turn on **Wake on clap** first), press **Ctrl+Alt+J** anywhere
+  (it also works with WorkLens hidden in the tray), use the tray's **Talk to the Overseer** item, or
+  click the circle. You hear a rising beep, then speak. It stops listening after about a second of
+  quiet.
+- **Hearing you:** faster-whisper (`base.en`, int8, CPU) runs on this PC. No audio leaves the
+  computer. Set `WORKLENS_WHISPER_MODEL=small.en` for better accuracy at about three times the wait.
+- **Thinking:** the installed Claude Code CLI (`claude -p`), on your own Claude login. Your question
+  and the session excerpts its tools read go to Anthropic. Its model is Sonnet by default; Haiku or
+  Opus can be picked on the screen. Follow-ups within 10 minutes continue the same conversation, so
+  "tell me more about the video edit" works.
+- **Replying:** the Windows voice (instant, the default) or Kokoro (more natural, much slower on a
+  2-core laptop). It speaks one sentence at a time while the rest of the answer is still arriving.
+  Clicking the circle or pressing Ctrl+Alt+J while it talks stops it.
+- **The session board** groups sessions into *Waiting on you* (the session asked you something and
+  is stuck until you answer), *Working now* and *Recently finished*. Click one to read its last turns.
+
+**It can only read.** The overseer's Claude runs with no built-in tools (`--tools ""`), no settings
+files (`--restricted`), only its own MCP server (`src/overseer/mcp.js`, via `--strict-mcp-config`)
+and permission mode `dontAsk`. Every tool in that server only reads, through WorkLens's GET
+endpoints. It can't start, stop or message a session, edit a file or post anything.
+
+**Where the session data comes from:** the Claude desktop app's index in
+`%LOCALAPPDATA%\Claude-Data\<account>\claude-code-sessions\` (titles, folders, which session
+started which) and the transcripts in `~\.claude\projects\` (only the last few hundred KB of each
+is read). Both formats belong to the Claude app and can change in an update, so the reader skips
+anything it doesn't recognise instead of failing. "Working" is a guess: the app doesn't write it to
+disk, so a transcript changed in the last 90 seconds counts as working.
+
+**Needs:** Claude Code installed and signed in (run `claude` once in a terminal and log in; the
+desktop app's own sign-in is separate), and Python 3 with `faster-whisper`, `soundfile`, `numpy`
+and, for the Kokoro voice, `kokoro-onnx` with its model files in `~\.kokoro`.
+
+| Route | What it does |
+|---|---|
+| `GET /api/overseer/sessions` | All sessions with state, open question, recap and last reply (`?archived=1` adds archived ones). |
+| `GET /api/overseer/sessions/<id>` | One session's last turns (`?turns=`, at most 40). |
+| `POST /api/overseer/ask` | `{ text }` → NDJSON stream: `delta`, `reset`, `tool`, `done` (`spoken`, `detail`), `error`. |
+| `POST /api/overseer/stt` | A WAV body → `{ text }`. |
+| `POST /api/overseer/tts` | `{ text }` → `audio/wav` (Kokoro). |
+| `GET /api/overseer/status`, `POST /api/overseer/settings`, `/warm`, `/stop`, `/new` | Status, settings (name, model, voice), model preload, cancel, new conversation. |
+
 ## Focus, drift, and resume briefs
 
 Pin a project as "Focused on" from the Today view. If your live activity classifies to something else for a sustained stretch, a dismissible banner says so (mode — silent, gentle, or strict — is set in Settings). Opening a project, or having one pinned, shows a resume brief: what you last touched and the oldest open task, computed locally with no AI call.

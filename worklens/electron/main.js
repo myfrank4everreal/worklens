@@ -10,7 +10,7 @@ import { createRequire } from 'node:module';
 // silently resolves to an empty object) — a real CommonJS require(), which Electron's module
 // loader intercepts correctly, is the reliable way to get the API from an ESM main process.
 const require = createRequire(import.meta.url);
-const { app, BrowserWindow, Tray, Menu, nativeImage, dialog, safeStorage, shell } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, dialog, safeStorage, shell, globalShortcut } = require('electron');
 const port = process.env.WORKLENS_PORT || 4317;
 const samePath = (a, b) => path.resolve(a || '').toLowerCase() === path.resolve(b || '').toLowerCase();
 
@@ -140,7 +140,11 @@ if (!gotLock) {
       icon: windowIconPath(),
       webPreferences: {
         nodeIntegration: false,
-        contextIsolation: true
+        contextIsolation: true,
+        // The Overseer listens for a clap and answers out loud while the window is hidden in the
+        // tray, so the page must not be throttled in the background, and may play sound unprompted.
+        backgroundThrottling: false,
+        autoplayPolicy: 'no-user-gesture-required'
       }
     });
     // Profile links, site links and the YouTube/TikTok sign-in pages open in the person's own
@@ -171,10 +175,24 @@ if (!gotLock) {
     mainWindow.on('closed', () => { mainWindow = null; });
   }
 
+  // Starts the Overseer listening without bringing the window forward. The page owns the
+  // microphone and the voice loop (public/overseer.js); this only rings its bell.
+  function activateOverseer() {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.executeJavaScript("window.dispatchEvent(new Event('overseer:activate'))").catch(() => {});
+  }
+
+  function registerOverseerShortcut() {
+    try {
+      if (!globalShortcut.register('CommandOrControl+Alt+J', activateOverseer)) console.error('Ctrl+Alt+J is taken by another app; the Overseer still works from its screen and the tray.');
+    } catch (err) { console.error('Could not register the Overseer shortcut:', err.message); }
+  }
+
   function buildTrayMenu() {
     const loginItem = app.getLoginItemSettings();
     return Menu.buildFromTemplate([
       { label: 'Open WorkLens', click: () => createWindow() },
+      { label: 'Talk to the Overseer   Ctrl+Alt+J', click: () => activateOverseer() },
       { type: 'separator' },
       {
         label: 'Edit OpenRouter key (.env)',
@@ -252,7 +270,10 @@ if (!gotLock) {
     }
     createTray();
     await createWindow();
+    registerOverseerShortcut();
   });
+
+  app.on('will-quit', () => { try { globalShortcut.unregisterAll(); } catch {} });
 
   app.on('second-instance', () => { createWindow(); });
 

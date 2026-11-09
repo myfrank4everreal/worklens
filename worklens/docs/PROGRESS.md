@@ -939,3 +939,30 @@ your machine:
 - Same HTTP paths (`/health`, `/sync`, `/admin/...`) and the same `SYNC_TOKEN`, so WorkLens only changed its URL.
 - 1 tester imported; the local bot is stopped and must stay stopped.
 - The WorkLens TestLoop sync went from 2 to 10 minutes, and the posting bot sync from 5 to 15, to stay inside Blob's free reads.
+
+## Overseer: voice questions about every Claude session (branch worklens-voice-overseer)
+
+- `src/overseer/sessions.js` reads the Claude desktop app's session index and the tail of each
+  transcript, read-only, and works out each session's state: working (transcript changed in the last
+  90 s), waiting (its last wrap-up asked a question nobody has answered) or idle. Tested against the 42
+  real sessions on this PC: 2.4 s for the first read, about 40 ms after that.
+- `src/overseer/brain.js` runs `claude -p` with no built-in tools, `--restricted`, only the read-only
+  `src/overseer/mcp.js` tools, and `dontAsk`. Answers stream; the spoken part comes before a `---` line.
+- `src/media/speech_serve.py` keeps Whisper (base.en) and Kokoro loaded in one Python process, which
+  stops after 10 idle minutes. faster-whisper's own PyAV decoding fails with the installed PyAV, so the
+  helper decodes WAV with soundfile.
+- `public/overseer.js`: clap detection (same rules as Jarvis's `clap.ts`, measured in time so it runs on
+  audio events and works with the window hidden), recording that stops after about a second of quiet,
+  16 kHz WAV encoding, sentence-by-sentence speech. Electron registers Ctrl+Alt+J globally and turns off
+  background throttling.
+- Tested on a second port (`WORKLENS_PORT=4399`) with an empty test database: the session list,
+  session detail, all three MCP tools, the screen, the origin check, and speech-to-text and Kokoro through
+  the server. Synthetic clap tests catch single and double claps and ignore speech, sustained noise and a
+  door thud.
+- **Not tested:** an answer from Claude (the CLI on this PC says `loggedIn: false`), a real clap or real
+  speech through a microphone (the browser pane blocks the mic), and the Electron build (global shortcut,
+  hidden-window listening).
+- **Speed on this PC under load:** with the CPU at 100% from video renders and about 900 MB of RAM free,
+  Whisper took 77–117 s to transcribe 7 s of speech and Kokoro ran about 5x slower than real time. Not yet
+  measured on an idle machine; the Windows voice is the default for replies because of this.
+

@@ -19,6 +19,7 @@ import { posterApi, startPoster } from './poster.js';
 import { mediaApi, seedVoiceProfiles, startMediaJobs } from './media/api.js';
 import { enginesApi, stopEngines } from './engines.js';
 import { workstationApi, workstationCapture, workstationSummary } from './workstation.js';
+import { overseerApi, startOverseer, stopOverseer } from './overseer/api.js';
 
 const execFileAsync = promisify(execFile);
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -492,6 +493,7 @@ async function api(req, res, url) {
   // already on the port, so an old copy left running can't silently serve stale features.
   if (req.method === 'GET' && url.pathname === '/api/version') return json(res, 200, BUILD);
   if (await brandsApi(req, res, url, { json, body }) !== false) return;
+  if (await overseerApi(req, res, url) !== false) return;
   if (await testloopApi(req, res, url, { json, body }) !== false) return;
   if (await enginesApi(req, res, url, { json, body }) !== false) return;
   if (await mediaApi(req, res, url, { json, body }) !== false) return;
@@ -790,4 +792,6 @@ server.on('error', (error) => {
   }
 });
 process.on('exit', stopEngines);
+process.on('exit', stopOverseer);
+startOverseer();
 server.listen(port, () => console.log(`WorkLens is running at http://localhost:${port}`));
