@@ -105,14 +105,35 @@ function render() {
 }
 
 // ---------- the Videos block inside a brand's panel ----------
+// One status at a time behind tabs (the same tabs as Content), so the cards get the full width
+// instead of five narrow columns. Each brand remembers its last tab.
+const STATUS_HINT = {
+  idea: 'Planned, not made yet.', script: 'Script written, waiting to be rendered.', rendered: 'Made. Run the check before posting.',
+  checked: 'Passed the check: loudness right, no black or white frames. Ready to post.', posted: 'Out on the brand’s accounts.'
+};
+const videoStage = {};
+// Studio projects show as chips above the tabs; past a handful they crowd out the videos, so the
+// rest fold behind "Show all".
+const STUDIO_SHOWN = 6, studioOpen = new Set();
+function stageFor(id, counts) {
+  let s = videoStage[id];
+  if (s === undefined) { try { s = localStorage.getItem(`wl-video-stage-${id}`); } catch { s = null; } }
+  if (!data.statuses.includes(s)) s = data.statuses.find(st => st !== 'posted' && counts[st]) || data.statuses[0];
+  return (videoStage[id] = s);
+}
 function brandVideos(el) {
   const id = Number(el.dataset.brandVideos);
   const mine = films.filter(f => f.brand_id === id), edits = projects.filter(p => p.brand_id === id);
-  const cols = data.statuses.map(s => { const list = mine.filter(f => f.status === s); return `<div class="kan-col"><div class="kan-head"><span class="eyebrow">${STATUS_LABEL[s]}</span><span class="mono">${list.length}</span></div>${list.map(filmCard).join('') || '<div class="kan-empty">—</div>'}</div>`; }).join('');
+  const counts = Object.fromEntries(data.statuses.map(s => [s, mine.filter(f => f.status === s).length]));
+  const stage = stageFor(id, counts), list = mine.filter(f => f.status === stage);
+  const tabs = data.statuses.map((s, n) => `<button class="stage-tab ${s === stage ? 'active' : ''} ${s}" data-video-stage="${id}:${s}" role="tab" aria-selected="${s === stage}"><span class="stage-num">${n + 1}</span><span class="stage-name">${STATUS_LABEL[s]}</span><em>${counts[s]}</em></button>`).join('');
   const lemoN = mine.filter(f => f.engine === 'lemo').length;
   el.innerHTML = `<div class="card brand-videos"><div class="section-title"><h3>Videos</h3><span class="eyebrow">${mine.length} FILMS · ${lemoN} CODE-MADE · ${mine.length - lemoN} STOCK · ${edits.length} IN STUDIO</span></div>
-    ${edits.length ? `<div class="brand-edits"><span class="eyebrow">IN STUDIO</span>${edits.map(p => `<button class="chip-btn" data-open-studio="${p.id}">▶ ${esc(p.title)}</button>`).join('')}</div>` : ''}
-    ${mine.length ? `<div class="kanban">${cols}</div>` : `<div class="empty">No films for this brand yet. Pick a style in <button class="link-btn" data-open-tool="engines">Engines</button>, or give an existing film this brand in the film library.</div>`}</div>`;
+    ${edits.length ? `<div class="brand-edits"><span class="eyebrow">IN STUDIO</span>${(studioOpen.has(id) ? edits : edits.slice(0, STUDIO_SHOWN)).map(p => `<button class="chip-btn" data-open-studio="${p.id}">▶ ${esc(p.title)}</button>`).join('')}${edits.length > STUDIO_SHOWN ? `<button class="link-btn" data-studio-more="${id}">${studioOpen.has(id) ? 'Show fewer' : `Show all ${edits.length}`}</button>` : ''}</div>` : ''}
+    ${mine.length ? `<div class="stage-tabs" role="tablist">${tabs}</div>
+      <p class="stage-hint">${esc(STATUS_HINT[stage])}${list.length ? ` · ${list.length} film${list.length === 1 ? '' : 's'}` : ''}</p>
+      ${list.length ? `<div class="film-grid brand-film-grid">${list.map(filmCard).join('')}</div>` : `<div class="empty">No films in ${STATUS_LABEL[stage]}.</div>`}`
+    : `<div class="empty">No films for this brand yet. Pick a style in <button class="link-btn" data-open-tool="engines">Engines</button>, or give an existing film this brand in the film library.</div>`}</div>`;
 }
 async function fillBrandVideos() {
   const slots = document.querySelectorAll('[data-brand-videos]'); if (!slots.length) return;
@@ -127,6 +148,17 @@ document.addEventListener('click', async e => {
   const t = e.target;
   if (t.closest?.('.nav[data-view="engines"]')) return loadEngines();
   if (!t.closest?.('#enginesRoot,[data-brand-videos]')) return;
+  if (t.dataset.studioMore) {
+    const b = Number(t.dataset.studioMore);
+    if (studioOpen.has(b)) studioOpen.delete(b); else studioOpen.add(b);
+    return document.querySelectorAll(`[data-brand-videos="${b}"]`).forEach(brandVideos);
+  }
+  const stageTab = t.closest('[data-video-stage]');
+  if (stageTab) {
+    const [b, s] = stageTab.dataset.videoStage.split(':');
+    videoStage[b] = s; try { localStorage.setItem(`wl-video-stage-${b}`, s); } catch {}
+    return document.querySelectorAll(`[data-brand-videos="${b}"]`).forEach(brandVideos);
+  }
   if (t.dataset.engFilter) { engineFilter = t.dataset.engFilter; return render(); }
   if (t.dataset.openStudio) return openStudio(Number(t.dataset.openStudio));
   if (t.dataset.newVideo) {

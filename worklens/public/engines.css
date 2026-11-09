@@ -55,14 +55,10 @@
 .film-row{display:flex;gap:6px;flex-wrap:wrap}
 .film-row select{flex:1;min-width:0;padding:5px 6px;font-size:11px}
 .film-row button{flex:1;padding:6px 8px;font-size:11px}
-/* Brands → Videos: a status board per brand */
+/* Brands → Videos: one status at a time behind the shared .stage-tabs (hub.css), cards at full width */
 .brand-videos{margin-top:14px;border-top:3px solid var(--brand,var(--border))}
 .brand-edits{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-.kanban{display:grid;grid-template-columns:repeat(5,minmax(170px,1fr));gap:10px;overflow-x:auto}
-.kan-col{display:grid;gap:8px;align-content:start;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);min-width:0}
-.kan-head{display:flex;justify-content:space-between;align-items:center}
-.kan-empty{font-size:11px;color:var(--text-faint);text-align:center;padding:10px 0}
-.kan-col .film-thumb{height:200px}
+.brand-film-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 @media(max-width:900px){.eng-compare{grid-template-columns:1fr}.eng-controls input{min-width:0;flex:1}}
 @media(max-width:620px){.style-grid,.film-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.eng-block{padding:10px}}
 .mine-badge{font-family:var(--font-mono);font-size:8px;letter-spacing:.8px;padding:2px 6px;border-radius:99px;background:var(--eng);color:var(--bg);vertical-align:middle}
