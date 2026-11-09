@@ -87,7 +87,7 @@ export async function overseerApi(req, res, url) {
     try {
       const wav = await rawBody(req, MAX_AUDIO_BYTES);
       if (wav.length < 1000 || wav.subarray(0, 4).toString('latin1') !== 'RIFF') return json(res, 400, { error: 'Expected a WAV recording.' });
-      return json(res, 200, await transcribe(wav, { prompt: `${overseerSettings().name}, WorkLens, sessions, Tees Inspired, Coded Film, Mafrex, TestLoop.` }));
+      return json(res, 200, await transcribe(wav, { prompt: `${overseerSettings().name}, WorkLens, sessions, GitHub, commit, push, Tees Inspired, Coded Film, MafrexAI, TestLoop, Community Info, Paystack, Telegram, TikTok.` }));
     } catch (error) { return json(res, error.status || 500, { error: error.message }); }
   }
 

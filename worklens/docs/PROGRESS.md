@@ -959,10 +959,18 @@ your machine:
   session detail, all three MCP tools, the screen, the origin check, and speech-to-text and Kokoro through
   the server. Synthetic clap tests catch single and double claps and ignore speech, sustained noise and a
   door thud.
-- **Not tested:** an answer from Claude (the CLI on this PC says `loggedIn: false`), a real clap or real
-  speech through a microphone (the browser pane blocks the mic), and the Electron build (global shortcut,
-  hidden-window listening).
-- **Speed on this PC under load:** with the CPU at 100% from video renders and about 900 MB of RAM free,
-  Whisper took 77–117 s to transcribe 7 s of speech and Kokoro ran about 5x slower than real time. Not yet
-  measured on an idle machine; the Windows voice is the default for replies because of this.
+- **Answers (tested 2026-11-09, after signing the CLI in):** typed questions through `/api/overseer/ask`
+  with Sonnet. "What's waiting on me?" called `list_sessions` and finished in 17 s (first text at 12.7 s).
+  A follow-up ("tell me more about the first one") resumed the conversation, called `read_session` and
+  finished in 14 s. In the screen, a breakdown question spoke its three-sentence summary with the Windows
+  voice (first sentence at 16 s), left the detail on screen only, and returned to Ready. With Kokoro, a
+  slower answer started playing at 47.5 s. Most of that wait was Claude, then about 10 s to synthesise.
+- **Speech speed (CPU at about 23%, about 830 MB of RAM free):** Whisper base.en transcribed 7 s of speech
+  in 2 s once loaded; the first call, which includes loading the model, took 10–21 s. Kokoro made 7 s of
+  speech in 7.8 s warm, or 22 s cold. Under full load from video renders it was far slower: 77–117 s for
+  Whisper and about 5x real time for Kokoro.
+- Whisper heard "GitHub" as "get hub" until GitHub, Paystack, Community Info and similar names were added to
+  its prompt hint.
+- **Not tested:** a real clap or real speech through a microphone (the browser pane blocks the mic), and
+  the Electron build (global shortcut, hidden-window listening).
 
