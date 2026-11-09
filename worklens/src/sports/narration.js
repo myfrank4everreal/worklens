@@ -1,4 +1,4 @@
-// Pitch Prophet · narration. One voice line per scene of the film, written from the briefing's
+// Community Info · narration. One voice line per scene of the film, written from the briefing's
 // numbers (nothing invented), plus the copy the posting bot needs (title, description, hashtags).
 // `text` is what a viewer would read; `say` is the same line with numbers spelled out for TTS.
 
@@ -68,14 +68,14 @@ export function buildNarration(b, scenes, { format = 'long', n = 3 } = {}) {
   for (const id of scenes) {
     const k = Number((id.match(/\d+$/) || [0])[0]);
     const m = format === 'short' ? withModel[0] : shown[k];
-    if (id === 'sting') out[id] = line(`This is Pitch Prophet, your daily briefing for ${dayWords(b.date)}. The model has scanned ${b.matches.length} matches. Here's what it sees.`);
+    if (id === 'sting') out[id] = line(`This is Community Info, your daily briefing for ${dayWords(b.date)}. Community Info has scanned ${b.matches.length} matches. Here's what it sees.`);
     else if (id === 'rundown') {
       const top = shown.slice(0, 3).map(x => `${T(x)[0]} against ${T(x)[1]}`);
       out[id] = line(`On today's card: ${top.slice(0, -1).join(', ')}${top.length > 1 ? ', and ' : ''}${top[top.length - 1]}. Let's get into it.`);
     } else if (/^title/.test(id)) {
       const [h, a] = T(m);
-      const caveat = m.crossLeague ? ' Two different leagues, so the numbers here lean on the bookmakers as well as the model.'
-        : m.changedDivision ? ' One side changed division recently, so the numbers lean on the bookmakers as well as the model.' : '';
+      const caveat = m.crossLeague ? ' Two different leagues, so the numbers here lean on the bookmakers as well as our ratings.'
+        : m.changedDivision ? ' One side changed division recently, so the numbers lean on the bookmakers as well as our ratings.' : '';
       out[id] = line(`${m.competition}. ${h} host ${a}, kick-off ${m.kickoff} West Africa time.${caveat}`);
     } else if (/^form/.test(id) && format === 'short') {
       const [h, a] = T(m), wins = f => (String(f || '').match(/W/g) || []).length;
@@ -90,13 +90,13 @@ export function buildNarration(b, scenes, { format = 'long', n = 3 } = {}) {
     } else if (/^pitch/.test(id)) {
       const [h, a] = T(m), p = m.model.probs, fav = p.home >= p.away ? h : a, favP = Math.max(p.home, p.away);
       const verdict = favP >= 0.6 ? `${fav} are clear favourites.` : Math.abs(p.home - p.away) < 0.08 ? 'Too close to call.' : `${fav} shade it, but it's far from settled.`;
-      out[id] = line(`The model makes it ${pct(p.home)} ${h}, ${pct(p.draw)} the draw, ${pct(p.away)} ${a}. Expected goals: ${m.model.xg.home} to ${m.model.xg.away}. ${verdict}`);
+      out[id] = line(`Community Info makes it ${pct(p.home)} ${h}, ${pct(p.draw)} the draw, ${pct(p.away)} ${a}. Expected goals: ${m.model.xg.home} to ${m.model.xg.away}. ${verdict}`);
     } else if (/^grid/.test(id)) {
       const s = m.model.scores || [];
       out[id] = line(`Most likely score: ${s[0]?.score}, at ${pct(s[0]?.p || 0)}.${s.length > 2 ? ` Then ${s[1].score}, and ${s[2].score}.` : ''}`);
     } else if (/^market/.test(id)) {
       const [h] = T(m), mk = m.market, md = m.model.probs, gap = md.home - mk.home;
-      const view = Math.abs(gap) < 0.05 ? 'Model and market agree.' : `The model is ${gap > 0 ? 'more' : 'less'} convinced, at ${pct(md.home)}.`;
+      const view = Math.abs(gap) < 0.05 ? 'Community Info and the market agree.' : `Community Info is ${gap > 0 ? 'more' : 'less'} convinced, at ${pct(md.home)}.`;
       out[id] = line(`The bookmakers give ${h} ${pct(mk.home)}, the draw ${pct(mk.draw)}. ${view}`);
     } else if (/^angles/.test(id)) {
       let list = (m.angles || []).filter(x => !/^Cross-league tie|changed division recently/.test(x));
@@ -117,20 +117,19 @@ export function buildNarration(b, scenes, { format = 'long', n = 3 } = {}) {
     } else if (id === 'picks') {
       const v = b.picks.value, s = b.picks.safest;
       const parts = v.length
-        ? v.slice(0, 2).map(p => `Value pick: ${p.label}, in ${p.match}, priced at ${p.odds}. The model gives it ${pct(p.model)}, the market ${pct(p.bookmaker)}.`)
-        : ['No value bets today. The model only flags a pick when it beats the bookmakers by four points or more.'];
+        ? v.slice(0, 2).map(p => `Value pick: ${p.label}, in ${p.match}, priced at ${p.odds}. Community Info gives it ${pct(p.model)}, the market ${pct(p.bookmaker)}.`)
+        : ['No value bets today. Community Info only flags a pick when it beats the bookmakers by four points or more.'];
       if (s[0]) parts.push(`Safest call by the numbers: ${s[0].label}, ${s[0].match}, at ${pct(s[0].model)}.`);
-      parts.push('Eighteen plus only. These are predictions, not guarantees. Never bet more than you can afford to lose.');
       out[id] = line(parts.join(' ').replace(/ v /g, ' against ').replace(/\b\d{4} (?=[A-Z])/g, ''));
     } else if (id === 'end') {
       out[id] = format === 'short'
-        ? line('Full breakdown on YouTube. Follow Pitch Prophet. Eighteen plus, predictions, not guarantees.')
-        : line("That's the briefing. Subscribe, check our track record, and come back tomorrow. The model calls it before kick-off.");
+        ? line("That was just one game. Get the full analysis and predictions for today's biggest matches on YouTube. Who's your pick? Tell us in the comments. Do you want daily predictions? Follow Community Info or subscribe.")
+        : line("That's the briefing. Community Info calls it before kick-off. Do you want daily predictions? Follow Community Info or subscribe.");
     } else if (id === 'hook') {
       const [h, a] = T(m), p = m.model.probs, home = p.home >= p.away, favP = Math.max(p.home, p.away), fav = home ? h : a;
       out[id] = Math.abs(p.home - p.away) < 0.05
-        ? line(`${h} against ${a}: the model can't split them. ${pct(p.home)} to ${pct(p.away)}.`)
-        : line(`The model's call for ${h} against ${a}: ${favP > 0.5 ? `${fav} to win, ${pct(favP)}.` : `a ${pct(favP)} win chance for ${fav}.`}`);
+        ? line(`${h} against ${a}: Community Info can't split them. ${pct(p.home)} to ${pct(p.away)}.`)
+        : line(`Community Info's call for ${h} against ${a}: ${favP > 0.5 ? `${fav} to win, ${pct(favP)}.` : `a ${pct(favP)} win chance for ${fav}.`}`);
     }
   }
   return out;
@@ -153,35 +152,36 @@ export function postCopy(b, { format, n = 3, events }) {
   if (format === 'short') {
     const m = shown[0], p = m.model.probs, favHome = p.home >= p.away, fav = spokenTeam(favHome ? m.home : m.away), favP = Math.max(p.home, p.away);
     return {
-      title: `${vs(m)}: the model's call (${m.competition}, ${shortDate(b.date)})`.slice(0, 100),
+      title: `${vs(m)}: Community Info's call (${m.competition}, ${shortDate(b.date)})`.slice(0, 100),
       caption: [
-        `${vs(m)} prediction: our data model gives ${fav} a ${pct(favP)} win chance, the draw ${pct(p.draw)}. Most likely score ${m.model.scores[0].score}. Expected goals ${m.model.xg.home} to ${m.model.xg.away}.`,
-        `${m.competition} preview by the numbers. Full breakdown on YouTube: Pitch Prophet.`,
+        `${vs(m)} prediction: Community Info gives ${fav} a ${pct(favP)} win chance, the draw ${pct(p.draw)}. Most likely score ${m.model.scores[0].score}. Expected goals ${m.model.xg.home} to ${m.model.xg.away}.`,
+        `That was just one game. Get the full analysis and predictions for today's biggest matches on YouTube.`,
+        `Who's your pick? Tell us in the comments. Do you want daily predictions? Follow Community Info or subscribe.`,
         'Predictions, not guarantees. 18+.'
       ].join('\n\n'),
-      hashtags: [tag(m.home), tag(m.away), COMP_TAG[m.competition] || tag(m.competition), '#FootballPrediction', '#Football', '#PitchProphet'].join(' ')
+      hashtags: [tag(m.home), tag(m.away), COMP_TAG[m.competition] || tag(m.competition), '#FootballPrediction', '#Football', '#CommunityInfo'].join(' ')
     };
   }
   const head = shown.slice(0, 2).map(vs).join(', ');
   const league = comps.length <= 2 ? comps.join(' & ') : 'Football';
   let title = shown.length > 1
-    ? `${league} Predictions ${shortDate(b.date)}: ${head}${shown.length > 2 ? ' & more' : ''} | Model Picks`
+    ? `${league} Predictions ${shortDate(b.date)}: ${head}${shown.length > 2 ? ' & more' : ''} | Community Info Picks`
     : `${vs(shown[0])} Prediction & Preview | ${shown[0].competition} Picks, xG, Odds | ${shortDate(b.date)}`;
-  if (title.length > 100) title = `${league} Predictions ${shortDate(b.date)}: ${vs(shown[0])} & more | Model Picks`.slice(0, 100);
+  if (title.length > 100) title = `${league} Predictions ${shortDate(b.date)}: ${vs(shown[0])} & more | Community Info Picks`.slice(0, 100);
   const chapters = (events?.ev || []).filter(e => e.type !== 'voice' && (['sting', 'rundown', 'table', 'picks', 'end'].includes(e.scene) || /^title\d/.test(e.scene))).map(e => {
     const k = Number((e.scene.match(/\d+$/) || [0])[0]);
     const label = { sting: 'Intro', rundown: "Today's card", table: 'League table', picks: 'Picks of the day', end: 'Wrap-up' }[e.scene] || vs(shown[k]);
     return `${chapterTime(e.t)} ${label}`;
   });
   const caption = [
-    `Pitch Prophet daily football predictions for ${dayWords(b.date)}: ${shown.map(vs).join(', ')}.`,
-    'For every match: win chances from our Dixon-Coles model, expected goals (xG), the most likely scorelines, recent form, bookmaker odds compared with the model, and the picks of the day.',
+    `Community Info daily football predictions for ${dayWords(b.date)}: ${shown.map(vs).join(', ')}.`,
+    "For every match: Community Info's win chances, expected goals (xG), the most likely scorelines, recent form, bookmaker odds compared with our numbers, and the picks of the day.",
     chapters.length >= 3 ? chapters.join('\n') : '',
     `Predictions, not guarantees. 18+ only. Bet only what you can afford to lose. Not financial advice.`
   ].filter(Boolean).join('\n\n');
   // YouTube ignores every hashtag on a video that has more than 15: keep the headline two matches'
   // teams, the competitions, three topic tags and the brand tag, capped at 15.
-  const core = ['#FootballPredictions', '#BettingTips', '#MatchPreview', '#PitchProphet'];
+  const core = ['#FootballPredictions', '#BettingTips', '#MatchPreview', '#CommunityInfo'];
   const pool = [...new Set([...shown.slice(0, 2).flatMap(m => [tag(m.home), tag(m.away)]), ...comps.map(c => COMP_TAG[c] || tag(c))])];
   const hashtags = [...pool.slice(0, 15 - core.length), ...core].join(' ');
   return { title, caption, hashtags };

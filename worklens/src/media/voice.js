@@ -62,7 +62,8 @@ export async function synthesize({ text, voice, speed = 1, out }) {
   fs.writeFileSync(tmp, text, 'utf8');
   try {
     // Roughly a second per word on a slow CPU is the worst case seen; cap generously.
-    const timeout = Math.min(600000, 60000 + text.split(/\s+/).length * 3000);
+    // Loading the model alone can take over a minute on a busy laptop, so even short lines get time.
+    const timeout = Math.min(600000, 240000 + text.split(/\s+/).length * 3000);
     const result = await call(['--voice', voice, '--speed', String(speed), '--text-file', tmp, '--out', out], timeout);
     if (!result.ok) throw new Error(result.error);
     return result;

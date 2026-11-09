@@ -1,0 +1,99 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Community Info brand assets</title>
+<style>
+  @font-face { font-family: 'Barlow PP'; font-weight: 700; src: url(fonts/BarlowCondensed-Bold.ttf) format('truetype'); font-display: block; }
+  @font-face { font-family: 'Barlow PP'; font-weight: 600; src: url(fonts/BarlowCondensed-SemiBold.ttf) format('truetype'); font-display: block; }
+  html, body { margin: 0; background: #0C1411; overflow: hidden; }
+  canvas { display: block; }
+</style></head>
+<body><canvas id="c"></canvas>
+<script>
+// Community Info channel images, drawn in the same look as the films (board, yellow/cyan, Barlow
+// Condensed). A lemo-opuscar page: render with core/render/still.mjs --size WxH --q asset=<name>.
+//   avatar 800×800 · watermark 150×150 · banner 2560×1440 · xheader 1500×500 · fbcover 1640×624
+const asset = new URLSearchParams(location.search).get('asset') || 'avatar';
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const W = cv.width = innerWidth, H = cv.height = innerHeight;
+const C = { board: '#0C1411', yellow: '#FFD400', cyan: '#3FD8FF', chalk: '#F4F1E8', dim: '#8C9892' };
+const FONT = '"Barlow PP", sans-serif';
+const font = (px, weight = 700, italic = true) => `${italic ? 'italic ' : ''}${weight} ${px}px ${FONT}`;
+function text(str, x, y, px, { color = C.chalk, weight = 700, italic = true, align = 'center', spacing = 0 } = {}) {
+  ctx.font = font(px, weight, italic); ctx.letterSpacing = `${spacing}px`; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillText(str, x, y);
+}
+const width = (str, px, weight = 700, spacing = 0) => { ctx.font = font(px, weight); ctx.letterSpacing = `${spacing}px`; return ctx.measureText(str).width; };
+
+function board() {
+  ctx.fillStyle = C.board; ctx.fillRect(0, 0, W, H);
+  const g = Math.max(W, H) / 42;
+  ctx.strokeStyle = 'rgba(244,241,232,0.04)'; ctx.lineWidth = 1; ctx.beginPath();
+  for (let x = 0; x < W; x += g) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+  for (let y = 0; y < H; y += g) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+  ctx.stroke();
+}
+// A top-down pitch filling the frame, chalk lines, yellow and cyan washes at each end.
+function pitch(a = 0.16) {
+  const pw = W * 1.02, ph = pw * 68 / 105, ox = (W - pw) / 2, oy = (H - ph) / 2, P = (x, y) => [ox + x / 105 * pw, oy + y / 68 * ph];
+  for (const [x0, x1, c] of [[0, 0.3, '255,212,0'], [0.7, 1, '63,216,255']]) {
+    const g = ctx.createLinearGradient(W * x0, 0, W * x1, 0);
+    g.addColorStop(x0 === 0 ? 0 : 1, `rgba(${c},0.2)`); g.addColorStop(x0 === 0 ? 1 : 0, `rgba(${c},0)`);
+    ctx.fillStyle = g; ctx.fillRect(W * x0, 0, W * (x1 - x0), H);
+  }
+  ctx.strokeStyle = `rgba(244,241,232,${a})`; ctx.lineWidth = Math.max(2, W / 640);
+  const line = pts => { ctx.beginPath(); pts.forEach(([x, y], i) => { const [X, Y] = P(x, y); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }); ctx.stroke(); };
+  line([[0, 0], [105, 0], [105, 68], [0, 68], [0, 0]]); line([[52.5, 0], [52.5, 68]]);
+  for (const g of [0, 105]) { const s = g ? -1 : 1; line([[g, 13.84], [g + s * 16.5, 13.84], [g + s * 16.5, 54.16], [g, 54.16]]); line([[g, 24.84], [g + s * 5.5, 24.84], [g + s * 5.5, 43.16], [g, 43.16]]); }
+  const [cx, cy] = P(52.5, 34); ctx.beginPath(); ctx.arc(cx, cy, 9.15 / 105 * pw, 0, Math.PI * 2); ctx.stroke();
+}
+// One-line wordmark: COMMUNITY, then INFO on a yellow block, centred on (cx, y).
+function wordmark(cx, y, px) {
+  const a = width('COMMUNITY', px), b = width('INFO', px), gap = px * 0.26, pad = px * 0.2, total = a + gap + b + pad * 2, x0 = cx - total / 2;
+  text('COMMUNITY', x0, y, px, { align: 'left' });
+  const bx = x0 + a + gap;
+  ctx.fillStyle = C.yellow; ctx.fillRect(bx, y - px * 0.86, b + pad * 2, px * 1.08);
+  text('INFO', bx + pad - px * 0.02, y, px, { color: C.board, align: 'left' });
+  return total;
+}
+// The mark: CI on yellow with a centre-circle arc, readable when cropped to a small circle.
+function mark() {
+  ctx.fillStyle = C.yellow; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(12,20,17,0.16)'; ctx.lineWidth = W * 0.022;
+  ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
+  ctx.beginPath(); ctx.arc(W / 2, H / 2, W * 0.36, 0, Math.PI * 2); ctx.stroke();
+  const px = W * 0.62;
+  text('CI', W / 2 - px * 0.03, H / 2 + px * 0.345, px, { color: C.board, spacing: -W * 0.012 });
+}
+
+const drawings = {
+  avatar: mark,
+  watermark: mark,
+  banner() {
+    // YouTube shows only the middle 1546×423 on every device; everything readable stays inside it.
+    board(); pitch();
+    const cx = W / 2, cy = H / 2;
+    wordmark(cx, cy - 8, 170);
+    text('DAILY FOOTBALL ANALYSIS & PREDICTIONS', cx, cy + 94, 62, { weight: 600, italic: false, spacing: 5 });
+    text('COMMUNITY INFO CALLS IT BEFORE KICK-OFF', cx, cy + 164, 42, { weight: 600, italic: false, spacing: 5, color: C.yellow });
+  },
+  xheader() {
+    board(); pitch();
+    // Right of centre, clear of the profile picture on the lower left.
+    const cx = W * 0.56, cy = H / 2;
+    wordmark(cx, cy - 6, 112);
+    text('DAILY FOOTBALL ANALYSIS & PREDICTIONS', cx, cy + 66, 38, { weight: 600, italic: false, spacing: 3 });
+  },
+  fbcover() {
+    board(); pitch();
+    const cx = W / 2, cy = H / 2;
+    wordmark(cx, cy - 6, 112);
+    text('DAILY FOOTBALL ANALYSIS & PREDICTIONS', cx, cy + 68, 38, { weight: 600, italic: false, spacing: 3 });
+  }
+};
+window.DUR = 1;
+window.render = () => { drawings[asset](); return true; };
+(async () => {
+  await Promise.all([document.fonts.load(`italic 700 40px "Barlow PP"`), document.fonts.load(`600 40px "Barlow PP"`)]);
+  window.render();
+  window.READY = true;
+})();
+</script>
+</body></html>

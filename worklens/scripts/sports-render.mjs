@@ -1,4 +1,4 @@
-// Pitch Prophet · produce a briefing film with lemo-opuscar's renderer.
+// Community Info · produce a briefing film with lemo-opuscar's renderer.
 //   npm run sports:render -- [YYYY-MM-DD] [--format long|short] [--n 3] [--fps 30] [--silent] [--stills 1,8,20]
 // long  = 1920×1080 daily analysis (YouTube), short = 1080×1920 teaser of the headline match.
 //
@@ -31,6 +31,13 @@ const VOICE = process.env.SPORTS_VOICE || 'am_fenrir', SPEED = Number(process.en
 const COPY_ONLY = flag('--copy-only');
 const TG_MAX = 49 * 1024 * 1024;   // the posting bot uploads through Telegram (50 MB cap)
 
+// Kokoro must come from a Python any Windows program can see. Packages installed from a Claude
+// session land in the Claude app's private folder, so Task Scheduler can't find them; this
+// environment holds its own copy. Rebuild it with: python -m venv --system-site-packages <folder>,
+// then copy the packages in or pip install kokoro-onnx soundfile.
+const voiceEnv = path.join(root, 'data', 'sports', 'voice-env', 'Scripts', 'python.exe');
+if (!process.env.WORKLENS_PYTHON && fs.existsSync(voiceEnv)) process.env.WORKLENS_PYTHON = voiceEnv;
+
 const lemo = process.env.LEMO_DIR || path.join(os.homedir(), 'Documents', 'socialmedia', 'AI Video Editor', 'lemo-opuscar');
 if (!fs.existsSync(path.join(lemo, 'core', 'render', 'video.mjs'))) { console.error(`lemo-opuscar not found at ${lemo} (set LEMO_DIR)`); process.exit(1); }
 const briefingFile = path.join(path.resolve(process.env.WORKLENS_DATA_DIR || path.join(root, 'data')), 'sports', 'briefings', `${date}.json`);
@@ -59,8 +66,8 @@ for (const f of fs.readdirSync(path.join(src, 'fonts'))) fs.copyFileSync(path.jo
 fs.writeFileSync(path.join(film, 'briefing.json'), JSON.stringify(briefing));
 fs.writeFileSync(path.join(film, 'TREATMENT.md'), [
   'Style: telestrator', '',
-  `# Pitch Prophet · ${format === 'long' ? 'daily analysis' : 'teaser short'} · ${date}`, '',
-  'Built from data only (briefing.json from the Pitch Prophet data engine): no footage, no crests.',
+  `# Community Info · ${format === 'long' ? 'daily analysis' : 'teaser short'} · ${date}`, '',
+  'Built from data only (briefing.json from the Community Info data engine): no footage, no crests.',
   'Board pages in the Sports Telestrator grammar: home = yellow, away = cyan, warnings = red, chalk neutral;',
   'yellow slanted wipe between sections, hard cuts inside a match. Narration: Kokoro voice, one line per scene,',
   'written from the briefing numbers. Score and foley written in code (mix.py).',

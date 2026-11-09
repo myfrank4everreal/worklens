@@ -76,6 +76,28 @@ export function nextSlot(brandId, now = new Date()) {
   throw new Error('No free slot in the next year.');
 }
 
+// A card can ask for a place in the day (content_items.slot_pref):
+//   "HH:MM"  that slot, on the first day it's free (Pitch Prophet's full video: 11:00). If that would
+//            miss the card's post_by (a late run, 11:00 already gone), the next free slot instead.
+//   "late"   the latest free slot still before post_by, never the day's first slot, which belongs
+//            to the full video (Pitch Prophet's short). Without a post_by, the day's last free slot.
+// No preference, or no such slot: the brand's next free slot.
+export function chooseSlot(item, now = new Date()) {
+  const fallback = () => nextSlot(item.brand_id, now);
+  const pref = item.slot_pref || '';
+  if (!pref) return fallback();
+  const taken = new Set(db.prepare("SELECT scheduled_at FROM content_items WHERE brand_id=? AND scheduled_at IS NOT NULL AND stage IN ('scheduled','posted') AND id<>?").all(item.brand_id, item.id ?? -1).map(r => r.scheduled_at));
+  const at = (day, slot) => { const d = new Date(now); d.setDate(d.getDate() + day); const [h, m] = slot.split(':').map(Number); d.setHours(h, m, 0, 0); return d; };
+  const usable = (d, s) => d - now >= LEAD && !taken.has(s) && (!item.post_by || s <= item.post_by);
+  if (pref === 'late') {
+    const later = slotsFor(item.brand_id).slice(1).reverse();
+    for (let day = 0; day < 8; day++) for (const slot of later) { const d = at(day, slot), s = stamp(d); if (usable(d, s)) return s; }
+    return fallback();
+  }
+  for (let day = 0; day < 8; day++) { const d = at(day, pref), s = stamp(d); if (usable(d, s)) return s; }
+  return fallback();
+}
+
 function missing(i) {
   const need = [];
   if (!i.brand_id) need.push('a brand');
@@ -95,7 +117,7 @@ async function scheduleReady() {
     const need = missing(i);
     if (need.length) { note(i.id, `Can't schedule yet: needs ${need.join(', ')}.`); continue; }
     const brand = db.prepare('SELECT name FROM brands WHERE id=?').get(i.brand_id).name;
-    const at = nextSlot(i.brand_id);
+    const at = chooseSlot(i);
     // Time-sensitive posts (match predictions) carry post_by: never schedule them after it.
     if (i.post_by && at > i.post_by) {
       note(i.id, `Not scheduled: the next free slot (${at.replace('T', ' ')}) is after the post-by time (${i.post_by.replace('T', ' ')}, before kick-off). Post it by hand now, or move it back to Draft.`);
@@ -104,7 +126,7 @@ async function scheduleReady() {
     const fileId = i.tg_file_id || await uploadVideo(i.media);
     const postNo = i.post_no || (db.prepare('SELECT MAX(post_no) AS n FROM content_items WHERE brand_id=?').get(i.brand_id).n || 0) + 1;
     db.prepare('UPDATE content_items SET tg_file_id=?, post_no=? WHERE id=?').run(fileId, postNo, i.id);
-    await bot('/api/queue', { method: 'POST', body: JSON.stringify({ id: `wl-${i.id}`, brand, n: postNo, title: i.title, description: i.caption, hashtags: i.hashtags, fileId, at: new Date(at).toISOString() }) });
+    await queueWrite({ id: `wl-${i.id}`, brand, n: postNo, title: i.title, description: i.caption, hashtags: i.hashtags, fileId, at: new Date(at).toISOString() });
     db.prepare("UPDATE content_items SET stage='scheduled', scheduled_at=?, updated_at=CURRENT_TIMESTAMP WHERE id=?").run(at, i.id);
     note(i.id, `Queued as ${brand} #${String(postNo).padStart(3, '0')}; Telegram sends it at ${at.replace('T', ' ')}.`);
     n++;
@@ -113,6 +135,17 @@ async function scheduleReady() {
 }
 
 // Pull states back: posted in Telegram → Posted here; queued posts whose card is gone are removed.
+// The cloud queue is one file, and a read can return the copy from up to ~60 s earlier (Blob cache).
+// Two posts saved within that window can start from the same old copy, and the second save drops the
+// first (a whole post was lost this way on 2026-11-07). So saves are at least 65 s apart.
+let lastQueueWrite = 0;
+async function queueWrite(post) {
+  const wait = lastQueueWrite + 65000 - Date.now();
+  if (wait > 0) await new Promise(r => setTimeout(r, wait));
+  try { await bot('/api/queue', { method: 'POST', body: JSON.stringify(post) }); }
+  finally { lastQueueWrite = Date.now(); }
+}
+
 async function syncBack() {
   const { posts } = await bot('/api/sync');
   for (const p of posts) {
@@ -122,12 +155,26 @@ async function syncBack() {
     else if (p.status === 'sent' && item.stage === 'scheduled') note(item.id, `Sent to Telegram ${new Date(p.sentAt).toLocaleString()}. Tap "Mark as posted" there once it's up.`);
     else if (p.lastError) note(item.id, `Telegram send failed, retrying: ${p.lastError}`);
   }
+  // A scheduled card the cloud doesn't have (lost as above) goes back in, while its time is still at
+  // least 5 minutes away. Cards scheduled in the last 3 minutes are skipped: this read may predate them.
+  const inCloud = new Set(posts.map(p => p.id)), now = Date.now();
+  const lost = db.prepare("SELECT c.*, b.name AS brand_name FROM content_items c JOIN brands b ON b.id=c.brand_id WHERE c.stage='scheduled' AND c.tg_file_id<>'' AND c.scheduled_at IS NOT NULL").all()
+    .filter(i => !inCloud.has(`wl-${i.id}`) && new Date(i.scheduled_at) - now > 5 * 60000 && now - Date.parse(`${i.updated_at.replace(' ', 'T')}Z`) > 3 * 60000);
+  for (const i of lost) {
+    await queueWrite({ id: `wl-${i.id}`, brand: i.brand_name, n: i.post_no, title: i.title, description: i.caption, hashtags: i.hashtags, fileId: i.tg_file_id, at: new Date(i.scheduled_at).toISOString() });
+    note(i.id, `The bot had lost this post; queued it again. Telegram sends it at ${i.scheduled_at.replace('T', ' ')}.`);
+  }
 }
 
+// One run at a time: a slow video upload can outlast the 15-minute timer, and a second run working
+// from the same "edited" cards would upload them again and hand out new post numbers.
+let running = false;
 export async function runPoster() {
-  if (!ready(cfg())) return last;
+  if (!ready(cfg()) || running) return last;
+  running = true;
   try { const scheduled = await scheduleReady(); await syncBack(); last = { at: new Date().toISOString(), error: '', scheduled }; }
   catch (e) { last = { at: new Date().toISOString(), error: e.message, scheduled: 0 }; }
+  finally { running = false; }
   return last;
 }
 export function startPoster() {

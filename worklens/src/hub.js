@@ -295,6 +295,8 @@ export async function hubApi(req, res, url, { json, body }) {
       const f = contentFields(data, item);
       db.prepare('UPDATE content_items SET brand_id=?,title=?,stage=?,prompt=?,caption=?,hashtags=?,notes=?,accounts=?,media=?,scheduled_at=?,post_url=?,posted_at=CASE WHEN ?=\'posted\' THEN posted_at ELSE NULL END,updated_at=CURRENT_TIMESTAMP WHERE id=?')
         .run(f.brand_id, f.title, f.stage, f.prompt, f.caption, f.hashtags, f.notes, f.accounts, f.media, f.scheduled_at, f.post_url, f.stage, item.id);
+      // Back to Edited from a later stage = the video was re-made: the posting bot must upload it again.
+      if (f.stage === 'edited' && item.stage !== 'edited') db.prepare("UPDATE content_items SET tg_file_id=NULL, scheduled_at=NULL, poster_note='' WHERE id=?").run(item.id);
       const updated = db.prepare('SELECT * FROM content_items WHERE id=?').get(item.id);
       if (postNow) markPosted(updated);
       return json(res, 200, contentRow(db.prepare('SELECT * FROM content_items WHERE id=?').get(item.id)));

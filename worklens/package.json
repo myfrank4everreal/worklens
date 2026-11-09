@@ -9,11 +9,13 @@
     "start": "node --env-file-if-exists=.env src/server.js",
     "dev": "node --env-file-if-exists=.env --watch src/server.js",
     "mcp": "node src/mcp-server.js",
-    "check": "node --check src/server.js && node --check src/db.js && node --check src/openrouter.js && node --check src/project-analyzer.js && node --check src/episodes.js && node --check src/pdf.js && node --check src/plan-parser.js && node --check src/mcp-server.js && node --check src/brands.js && node --check src/engines.js && node --check src/testloop.js && node --check src/workstation.js && node --check src/media/ffmpeg.js && node --check src/media/render.js && node --check src/media/voice.js && node --check src/media/api.js && node --check src/media/voicestudio.js && node --check src/media/generate.js && node --check src/hub.js && node --check src/social.js && node --check src/sports/sources.js && node --check src/sports/model.js && node --check src/sports/briefing.js && node --check scripts/sports.mjs && node --check scripts/sports-render.mjs && node --check src/sports/narration.js",
+    "check": "node --check src/server.js && node --check src/db.js && node --check src/openrouter.js && node --check src/project-analyzer.js && node --check src/episodes.js && node --check src/pdf.js && node --check src/plan-parser.js && node --check src/mcp-server.js && node --check src/brands.js && node --check src/engines.js && node --check src/testloop.js && node --check src/workstation.js && node --check src/media/ffmpeg.js && node --check src/media/render.js && node --check src/media/voice.js && node --check src/media/api.js && node --check src/media/voicestudio.js && node --check src/media/generate.js && node --check src/hub.js && node --check src/social.js && node --check src/sports/sources.js && node --check src/sports/model.js && node --check src/sports/briefing.js && node --check scripts/sports.mjs && node --check scripts/sports-render.mjs && node --check src/sports/narration.js && node --check scripts/sports-daily.mjs && node --check scripts/sports-special.mjs && node --check src/sports/specials/u17-final-2026.mjs",
     "electron:dev": "electron .",
     "dist": "electron-builder --win nsis",
     "sports": "node --env-file-if-exists=.env scripts/sports.mjs",
-    "sports:render": "node scripts/sports-render.mjs"
+    "sports:render": "node scripts/sports-render.mjs",
+    "sports:daily": "node --env-file-if-exists=.env scripts/sports-daily.mjs",
+    "sports:special": "node scripts/sports-special.mjs"
   },
   "main": "electron/main.js",
   "engines": {

@@ -98,19 +98,24 @@ export function seedBrandAccounts() {
   setSetting('brand_accounts_seeded_v2', 'true');
 }
 
-// Third seed: the football brand. No accounts yet: the person creates the handles and adds them
-// in the Brand Command Center. Added once; deleting it by hand keeps it deleted.
+// Third seed: the football brand, Community Info (called Pitch Prophet until 2026-11-08; an existing
+// Pitch Prophet row is renamed, keeping its history). No accounts yet: the person creates the handles
+// and adds them in the Brand Command Center. Added once; deleting it by hand keeps it deleted.
+const SPORTS_BRAND = 'Community Info';
+const brandByName = name => db.prepare('SELECT id FROM brands WHERE lower(name)=lower(?)').get(name);
 export function seedSportsBrand() {
+  const legacy = brandByName('Pitch Prophet');
+  if (legacy && !brandByName(SPORTS_BRAND)) db.prepare('UPDATE brands SET name=? WHERE id=?').run(SPORTS_BRAND, legacy.id);
   if (getSetting('brand_sports_seeded_v1') !== 'true') {
-    if (!db.prepare('SELECT 1 FROM brands WHERE lower(name)=lower(?)').get('Pitch Prophet')) {
+    if (!brandByName(SPORTS_BRAND)) {
       db.prepare('INSERT INTO brands(name,color,description,sort) VALUES(?,?,?,(SELECT COALESCE(MAX(sort),-1)+1 FROM brands))')
-        .run('Pitch Prophet', '#16A34A', 'Football brand: daily data-driven match analysis and predictions (YouTube 16:9), plus shorts on TikTok/IG/YT. Every betting post carries the 18+ disclaimer.');
+        .run(SPORTS_BRAND, '#16A34A', 'Football brand: daily data-driven match analysis and predictions (YouTube 16:9), plus shorts on TikTok/IG/YT.');
     }
     setSetting('brand_sports_seeded_v1', 'true');
   }
   // Four posts a day: 11:00 daily analysis and 13:00 teaser go out before the afternoon kick-offs,
   // 17:00 and 19:00 carry the evergreen shorts. Set once; the person can change the setting.
-  const brand = db.prepare('SELECT id FROM brands WHERE lower(name)=lower(?)').get('Pitch Prophet');
+  const brand = brandByName(SPORTS_BRAND);
   if (brand && getSetting('brand_sports_slots_v1') !== 'true') {
     if (!getSetting(`poster_slots_${brand.id}`)) setSetting(`poster_slots_${brand.id}`, '11:00,13:00,17:00,19:00');
     setSetting('brand_sports_slots_v1', 'true');

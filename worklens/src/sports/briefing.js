@@ -19,6 +19,9 @@ const WEIGHT = { CL: 10, PL: 9, PD: 8, SA: 7, BL1: 7, FL1: 6, WC: 10, EC: 10, EL
   'af:143': 5, 'af:137': 5, 'af:81': 5, 'af:66': 4, 'af:29': 7, 'af:32': 6, 'af:34': 6, 'af:36': 6, 'af:12': 5, 'af:20': 4,
   'af:399': 6, 'af:307': 4, 'af:253': 3, 'af:13': 5, 'af:11': 4, 'af:10': 3, 'af:531': 8 };
 
+// A match worth a daily video on its own: top-five leagues, European cups, major tournaments.
+export const isBigMatch = m => (WEIGHT[m.compKey] ?? 0) >= 6;
+
 export function localDate(d = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
 }
@@ -162,11 +165,11 @@ function angles(m) {
   const fav = p.probs.home >= p.probs.away ? ['home', m.home] : ['away', m.away];
   if (m.market) {
     const mFav = m.market.home >= m.market.away ? 'home' : 'away';
-    if (mFav !== fav[0] && Math.abs(p.probs.home - p.probs.away) > 0.05) out.push(`Upset alert: bookies back ${mFav === 'home' ? m.home : m.away}, the model backs ${fav[1]}.`);
+    if (mFav !== fav[0] && Math.abs(p.probs.home - p.probs.away) > 0.05) out.push(`Upset alert: bookies back ${mFav === 'home' ? m.home : m.away}, Community Info backs ${fav[1]}.`);
     for (const side of ['home', 'away']) {
       if (m.market[side] == null) continue;
       const gap = p.probs[side] - m.market[side];
-      if (Math.abs(gap) >= 0.08) out.push(`Model rates ${side === 'home' ? m.home : m.away} at ${pct(p.probs[side])}, the market ${gap > 0 ? 'only' : 'at'} ${pct(m.market[side])}.`);
+      if (Math.abs(gap) >= 0.08) out.push(`Community Info rates ${side === 'home' ? m.home : m.away} at ${pct(p.probs[side])}, the market ${gap > 0 ? 'only' : 'at'} ${pct(m.market[side])}.`);
     }
   }
   if (p.over25 >= 0.62) out.push(`Goal-fest watch: ${pct(p.over25)} chance of 3+ goals (xG ${p.xg.home} v ${p.xg.away}).`);
@@ -273,8 +276,8 @@ export async function buildBriefing(date = localDate(), { maxOddsLookups = 10 } 
     if (reason && m.model && m.market?.home != null) m.model = blendWithMarket(m.model, m.market, reason);
     m.picks = reason && !m.model?.blend ? [] : valuePicks(m);
     m.angles = angles(m);
-    if (m.crossLeague) m.angles.push(m.model?.blend ? 'Cross-league tie: numbers blend the model with the market.' : 'Cross-league tie with no odds yet: model numbers are rough, no picks.');
-    if (m.changedDivision) m.angles.push(`${moved.map(t => t.short).join(' and ')} changed division recently: ${m.model?.blend ? 'numbers blend the model with the market' : 'model numbers are rough, no picks'}.`);
+    if (m.crossLeague) m.angles.push(m.model?.blend ? 'Cross-league tie: numbers blend our ratings with the market.' : 'Cross-league tie with no odds yet: our numbers are rough, no picks.');
+    if (m.changedDivision) m.angles.push(`${moved.map(t => t.short).join(' and ')} changed division recently: ${m.model?.blend ? 'numbers blend our ratings with the market' : 'our numbers are rough, no picks'}.`);
   }
 
   const allPicks = matches.flatMap(m => m.picks.map(p => ({ ...p, match: `${m.home} v ${m.away}`, matchId: m.id, competition: m.competition, kickoff: m.kickoff })));
@@ -303,7 +306,7 @@ export async function buildBriefing(date = localDate(), { maxOddsLookups = 10 } 
 }
 
 export function toMarkdown(b) {
-  const L = [`# Pitch Prophet · Daily briefing ${b.date}`, '', `Times in ${b.timezone}. Model fitted on ${b.model.fittedOn} matches (home advantage ×${b.model.homeAdvantage}).`, ''];
+  const L = [`# Community Info · Daily briefing ${b.date}`, '', `Times in ${b.timezone}. Model fitted on ${b.model.fittedOn} matches (home advantage ×${b.model.homeAdvantage}).`, ''];
   if (!b.matches.length) L.push('No featured matches today. Use a backup format: title race, model of the week, or a weekly evergreen.', '');
   if (b.headline) L.push(`**Headline game:** ${b.headline}`, '');
   for (const m of b.matches.slice(0, 15)) {
@@ -332,16 +335,21 @@ export function toMarkdown(b) {
 
 // ---------- grading & track record ----------
 const trackFile = path.join(sportsDir, 'track-record.json');
+// What actually went out: `queue` saves each film's own briefing here. The track record is built
+// from these only, so a test briefing or a pick no viewer saw never counts.
+export const publishedDir = path.join(sportsDir, 'published');
 
 export async function gradeAll() {
-  if (!fs.existsSync(briefingsDir)) return { graded: 0 };
+  if (!fs.existsSync(publishedDir)) return { graded: 0 };
   const today = localDate();
   const record = fs.existsSync(trackFile) ? JSON.parse(fs.readFileSync(trackFile, 'utf8')) : { days: {} };
   let graded = 0;
-  for (const file of fs.readdirSync(briefingsDir).filter(f => f.endsWith('.json')).sort()) {
+  for (const file of fs.readdirSync(publishedDir).filter(f => f.endsWith('.json')).sort()) {
     const date = file.slice(0, 10);
     if (date >= today || record.days[date]?.complete) continue;
-    const b = JSON.parse(fs.readFileSync(path.join(briefingsDir, file), 'utf8'));
+    const b = JSON.parse(fs.readFileSync(path.join(publishedDir, file), 'utf8'));
+    // The film's picks page shows the first four of value + safest.
+    const onScreen = new Set([...b.picks.value, ...b.picks.safest].slice(0, 4).map(p => `${p.matchId}|${p.market}`));
     const results = new Map();
     const prev = new Date(Date.parse(date) - DAY).toISOString().slice(0, 10);
     for (const m of (await footballData.matchesOn(prev, date)).matches || []) {
@@ -366,7 +374,9 @@ export async function gradeAll() {
       day.matches++; day.correct += pick === outcome ? 1 : 0;
       day.brier += ['home', 'draw', 'away'].reduce((s, k) => s + (m.model.probs[k] - (k === outcome ? 1 : 0)) ** 2, 0);
       const won = { home: r.hg > r.ag, draw: r.hg === r.ag, away: r.hg < r.ag, over25: r.hg + r.ag > 2, under25: r.hg + r.ag <= 2, bttsYes: r.hg > 0 && r.ag > 0, bttsNo: !(r.hg > 0 && r.ag > 0) };
-      for (const p of m.picks) day.picks.push({ match: `${m.home} v ${m.away}`, label: p.label, odds: p.odds, result: `${r.hg}-${r.ag}`, won: won[p.market], profit: round(won[p.market] ? p.odds - 1 : -1, 2) });
+      // Picks shown without a price (no odds on file) count for the hit rate but not for profit.
+      for (const p of [...b.picks.value, ...b.picks.safest].filter(x => x.matchId === m.id && onScreen.has(`${x.matchId}|${x.market}`)))
+        day.picks.push({ match: `${m.home} v ${m.away}`, label: p.label, odds: p.odds, result: `${r.hg}-${r.ag}`, won: won[p.market], profit: p.odds ? round(won[p.market] ? p.odds - 1 : -1, 2) : 0 });
     }
     day.brier = day.matches ? round(day.brier / day.matches) : null;
     record.days[date] = day;

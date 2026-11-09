@@ -289,11 +289,11 @@ charging you. To stay inside it:
 - Don't shorten these intervals.
 
 **Brand slots and post-by times.** A brand can have its own slots in the setting `poster_slots_<brandId>`
-(Pitch Prophet: `11:00,13:00,17:00,19:00`). The cloud bot only sends when cron-job.org calls it, so the cron job's
+(Community Info: `11:00,13:00,17:00,19:00`). The cloud bot only sends when cron-job.org calls it, so the cron job's
 hours must include every slot in use (`0,15 11,13,17,19 * * *` for these). A card with `post_by` (match predictions)
 is never given a slot after that time; its note says so instead, and you can post it by hand or drop it.
 
-## Pitch Prophet (football brand): data → film → queue
+## Community Info (football brand, called Pitch Prophet until 8 Nov 2026): data → film → queue
 
 Daily football predictions made from data only: no match footage, no club crests.
 
@@ -320,9 +320,28 @@ Daily football predictions made from data only: no match footage, no club crests
   `SPORTS_VOICE`, default `am_fenrir`); each scene stretches to its line. `mix.py` adds a coded groove (ducked under
   the voice) and foley; lemo's `mux.sh` masters to −14 LUFS. Matches kicking off before `--from` (12:00) are left
   out, since the posts go out from 11:00. Over 49 MB, an upload copy is made for Telegram.
+- **Daily run:** `npm run sports:daily` grades past days, builds the briefing, makes both films, queues them and sends
+  one status message to the owner's Telegram (done, quiet day or failed). Windows Task Scheduler runs it at 07:00
+  as **Pitch Prophet daily** (`scripts/sports-task.ps1`). A day already queued is left alone; a late run only covers
+  matches at least an hour away; a day with no major match makes nothing. Logs: `data/sports/logs/`. The laptop must be
+  on, or able to wake (Power Options → Allow wake timers → Enable); if it's missed, the task runs at next start.
+- **Voice environment:** `data/sports/voice-env` holds Kokoro for scheduled runs. Packages installed from a Claude
+  session land in the Claude app's private folder (`%LOCALAPPDATA%\Packages\Claude_*\LocalCache`), which programs
+  outside it, including Task Scheduler, can't see.
+- **Special editions:** one-off stories outside the daily briefing live in `src/sports/specials/<slug>.mjs` (checked facts,
+  sources, scenes, narration, copy and slots). Make them with `npm run sports:special -- <slug> --format long|short`, then
+  `npm run sports -- queue <slug>`. No odds or betting picks on youth tournaments.
+- **Brand kit:** images are drawn by `src/sports/brand/index.html`; the files and channel text are in
+  `Claude outputs/community-info-brand/`.
+- **Track record:** only days that were actually queued count (`data/sports/published/`), and only picks shown on screen.
 - **Copy rules:** titles, descriptions and hashtags come from the teams, competitions and numbers in the film;
   the long video's description carries YouTube chapters. The short (also for TikTok) never mentions odds, bookmakers
-  or the market. Every post carries "Predictions, not guarantees. 18+".
+  or the market. By the owner's decision the videos carry no spoken disclaimer; the only on-screen notice is a small
+  18+ tag on the long video's picks screen. Videos end on "Do you want daily predictions? Follow Community Info or
+  subscribe." The written descriptions still say "Predictions, not guarantees. 18+".
+- **Slots:** the bot gives the full video the 11:00 slot and the short the latest free slot before its kick-off
+  (`slot_pref`: `11:00` / `late`). A late run moves the full video to the next free slot. `npm run sports -- queue
+  <date> --replace` swaps a remade film into a card that hasn't been sent yet.
 
 ## Workstation · TestLoop bot in the cloud
 

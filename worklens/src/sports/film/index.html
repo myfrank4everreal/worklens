@@ -1,5 +1,5 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Pitch Prophet</title>
+<html><head><meta charset="utf-8"><title>Community Info</title>
 <style>
   @font-face { font-family: 'Barlow PP'; font-weight: 700; src: url(fonts/BarlowCondensed-Bold.ttf) format('truetype'); font-display: block; }
   @font-face { font-family: 'Barlow PP'; font-weight: 600; src: url(fonts/BarlowCondensed-SemiBold.ttf) format('truetype'); font-display: block; }
@@ -8,7 +8,7 @@
 </style></head>
 <body><canvas id="c"></canvas>
 <script>
-// Pitch Prophet · briefing film. A lemo-opuscar page (window.DUR / render(t) / READY / TEXTS):
+// Community Info · briefing film. A lemo-opuscar page (window.DUR / render(t) / READY / TEXTS):
 // every frame is drawn from briefing.json, the day's data-engine output, so the film is
 // rebuilt from data each day and contains no footage. Layout follows the frame:
 // 1920×1080 → the daily YouTube analysis, 1080×1920 → the teaser short (?format=short).
@@ -110,7 +110,7 @@ function board(t) {
 function bug(mode) {
   const x = SHORT ? 60 : 1452, y = SHORT ? 70 : 38;
   rect(x, y, 250, 44, C.home);
-  text('bug', 'PITCH PROPHET', x + 14, y + 34, { size: 32, color: '#0C1411', spacing: 1, noRead: true });
+  text('bug', 'COMMUNITY INFO', x + 12, y + 34, { size: 32, color: '#0C1411', spacing: 1, noRead: true, maxW: 226 });
   rect(x + 250, y, 178, 44, '#080C0E', 0.95);
   text('bugmode', mode, x + 264, y + 33, { size: 26, color: C.home, weight: 600, spacing: 2, noRead: true });
 }
@@ -134,15 +134,15 @@ function sceneSting() {
     const pop = back(seg(lt, 0.15, 0.6));
     ctx.save(); ctx.translate(s.x * U, s.y * U); ctx.scale(lerp(1.6, 1, pop), lerp(1.6, 1, pop)); ctx.translate(-s.x * U, -s.y * U);
     const a = seg(lt, 0.15, 0.3);
-    text('w1', 'PITCH', s.x, s.y - s.size * 0.55, { size: s.size, align: 'center', italic: true, alpha: a, color: C.chalk });
-    const pw = measure('PROPHET', s.size) + s.size * 0.5;
+    text('w1', 'COMMUNITY', s.x, s.y - s.size * 0.55, { size: s.size, align: 'center', italic: true, alpha: a, color: C.chalk });
+    const pw = measure('INFO', s.size) + s.size * 0.5;
     rect(s.x - pw / 2, s.y - s.size * 0.42, pw, s.size * 1.0, C.home, a);
-    text('w2', 'PROPHET', s.x, s.y + s.size * 0.4, { size: s.size, align: 'center', italic: true, alpha: a, color: '#0C1411' });
+    text('w2', 'INFO', s.x, s.y + s.size * 0.4, { size: s.size, align: 'center', italic: true, alpha: a, color: '#0C1411' });
     ctx.restore();
     if (lt < 0.28) { ctx.save(); ctx.globalAlpha = 0.55 * (1 - seg(lt, 0.15, 0.28)); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
     const r = eo(seg(lt, 0.8, 1.3));
     text('date', `DAILY BRIEFING  ·  ${dayLabel(B.date)}`, s.x, s.y + s.size * 1.05, { size: SHORT ? 46 : 52, align: 'center', weight: 600, spacing: 4, reveal: r, color: C.home });
-    text('tag', 'THE MODEL CALLS IT BEFORE KICK-OFF', s.x, s.y + s.size * 1.05 + (SHORT ? 70 : 74), { size: SHORT ? 36 : 40, align: 'center', weight: 600, spacing: 3, reveal: eo(seg(lt, 1.2, 1.7)), color: C.dim });
+    text('tag', 'COMMUNITY INFO CALLS IT BEFORE KICK-OFF', s.x, s.y + s.size * 1.05 + (SHORT ? 70 : 74), { size: SHORT ? 36 : 40, align: 'center', weight: 600, spacing: 3, reveal: eo(seg(lt, 1.2, 1.7)), color: C.dim });
   } };
 }
 
@@ -199,7 +199,7 @@ function sceneTitle(m, k) {
     teamDisc(1420, 480, 150, m.away, C.away, q);
     text('ta', upper(m.away), 1420, 760, { size: 110, italic: true, color: C.away, align: 'center', alpha: q, maxW: 760 });
     ctx.restore();
-    if (m.crossLeague || m.changedDivision) text('tx', m.crossLeague ? 'CROSS-LEAGUE TIE' : 'A SIDE CHANGED DIVISION: MODEL + MARKET', 960, 860, { size: 34, weight: 600, align: 'center', spacing: 4, color: C.red, reveal: eo(seg(lt, 0.9, 1.3)) });
+    if (m.crossLeague || m.changedDivision) text('tx', m.crossLeague ? 'CROSS-LEAGUE TIE' : 'A SIDE CHANGED DIVISION: BLENDED WITH THE MARKET', 960, 860, { size: 34, weight: 600, align: 'center', spacing: 4, color: C.red, reveal: eo(seg(lt, 0.9, 1.3)) });
   } };
 }
 
@@ -308,7 +308,7 @@ function probBar(x, y, w, h, m, p, id) {
 
 function scenePitch(m, k) {
   return { id: `pitch${k}`, dur: 5.6, section: `m${k}`, draw(lt) {
-    bug('THE MODEL');
+    bug('OUR CALL');
     if (SHORT) {
       text('ph', 'EXPECTED GOALS', 540, 300, { size: 74, italic: true, align: 'center', reveal: eo(seg(lt, 0, 0.4)) });
       pitch(150, 380, 1180, lt, m, true);
@@ -317,7 +317,7 @@ function scenePitch(m, k) {
       return;
     }
     text('ph', 'EXPECTED GOALS & WIN CHANCE', 120, 160, { size: 70, italic: true, reveal: eo(seg(lt, 0, 0.4)) });
-    text('ps', m.model.blend ? `MODEL BLENDED WITH THE MARKET (${upper(m.model.blendReason || 'cross-league')})` : 'DIXON-COLES MODEL · TWO SEASONS OF RESULTS', 124, 206, { size: 28, weight: 600, spacing: 3, color: C.dim, reveal: eo(seg(lt, 0.3, 0.8)) });
+    text('ps', m.model.blend ? `BLENDED WITH THE MARKET (${upper(m.model.blendReason || 'cross-league')})` : 'COMMUNITY INFO NUMBERS · TWO SEASONS OF RESULTS', 124, 206, { size: 28, weight: 600, spacing: 3, color: C.dim, reveal: eo(seg(lt, 0.3, 0.8)) });
     pitch(410, 245, 1100, lt, m, false);
     probBar(410, 978, 1100, 76, m, seg(lt, 2.6, 3.4), 'pbar');
   } };
@@ -362,7 +362,7 @@ function sceneGrid(m, k) {
 function sceneMarket(m, k) {
   return { id: `market${k}`, dur: 5.1, section: `m${k}`, draw(lt) {
     bug('V BOOKIES');
-    text('mh', 'MODEL v BOOKIES', SHORT ? 70 : 120, SHORT ? 340 : 190, { size: SHORT ? 92 : 86, italic: true, reveal: eo(seg(lt, 0, 0.4)) });
+    text('mh', 'COMMUNITY INFO v BOOKIES', SHORT ? 70 : 120, SHORT ? 340 : 190, { size: SHORT ? 92 : 86, italic: true, reveal: eo(seg(lt, 0, 0.4)) });
     text('ms', `${m.odds.bookmaker.toUpperCase()} ODDS ${m.odds.home} / ${m.odds.draw} / ${m.odds.away}  ·  OVERROUND REMOVED`, SHORT ? 74 : 124, SHORT ? 400 : 240, { size: 30, weight: 600, spacing: 2, color: C.dim, reveal: eo(seg(lt, 0.2, 0.7)), maxW: SHORT ? 940 : 1600 });
     const rows = [['home', upper(m.home), C.home], ['draw', 'DRAW', C.chalk], ['away', upper(m.away), C.away]];
     const x = SHORT ? 70 : 120, wMax = SHORT ? 760 : 1180, y0 = SHORT ? 520 : 320, step = SHORT ? 400 : 230;
@@ -371,7 +371,7 @@ function sceneMarket(m, k) {
       const mv = m.model.probs[key], bv = m.market[key];
       text(`ml${i}`, lab, x, y, { size: 52, italic: true, color: col, reveal: p, maxW: SHORT ? 940 : 900 });
       rect(x, y + 22, wMax * mv * p, 54, col);
-      text(`mm${i}`, `MODEL ${pct(mv)}`, x + wMax * mv * p + 16, y + 64, { size: 40, italic: true, color: col, alpha: seg(lt, 1.2 + i * 0.35, 1.4 + i * 0.35) });
+      text(`mm${i}`, `COMMUNITY INFO ${pct(mv)}`, x + wMax * mv * p + 16, y + 64, { size: 40, italic: true, color: col, alpha: seg(lt, 1.2 + i * 0.35, 1.4 + i * 0.35) });
       rrect(x, y + 92, Math.max(1, wMax * bv * p), 42, 0, null, 1, { c: C.dim, w: 3 });
       text(`mb${i}`, `BOOKIES ${pct(bv)}`, x + wMax * bv * p + 16, y + 126, { size: 34, weight: 600, color: C.dim, alpha: seg(lt, 1.2 + i * 0.35, 1.4 + i * 0.35) });
     });
@@ -381,7 +381,7 @@ function sceneMarket(m, k) {
 function sceneAngles(m, k) {
   // The short goes to TikTok too: no odds / bookmaker / market talk on it.
   const list = (m.angles || []).filter(a => !/^Cross-league tie|changed division recently/.test(a) && !(SHORT && /market|bookies|odds/i.test(a))).slice(0, 2);
-  if (m.crossLeague && list.length < 2 && !SHORT) list.push('Cross-league tie: numbers blend the model with the bookies.');
+  if (m.crossLeague && list.length < 2 && !SHORT) list.push('Cross-league tie: numbers blend our ratings with the bookies.');
   if (!list.length) list.push(`Both teams to score: ${pct(m.model.btts)}. Three or more goals: ${pct(m.model.over25)}.`);
   // Long enough for each card to be read: it appears at 0.8 + 1.2·i s and needs chars/15 + 1.5 s.
   const dur = Math.max(3, ...list.map((a, i) => 0.8 + 1.2 * i + a.replace(/\s/g, '').length / 15 + 1.7));
@@ -434,12 +434,16 @@ function sceneTable() {
 
 function scenePicks() {
   const picks = [...B.picks.value.map(p => ({ ...p, kind: 'VALUE' })), ...B.picks.safest.map(p => ({ ...p, kind: 'SAFEST' }))].slice(0, 4);
-  return { id: 'picks', dur: 10, section: 'picks', draw(lt) {
+  return { id: 'picks', dur: 7.5, section: 'picks', draw(lt) {
     bug('PICKS');
     text('kh', 'PICKS OF THE DAY', 120, 170, { size: 92, italic: true, reveal: eo(seg(lt, 0, 0.4)) });
+    // The one notice left in the videos, by the owner's choice: this screen shows odds and picks.
+    const tag = eo(seg(lt, 0.2, 0.5));
+    rrect(1690, 112, 110, 70, 10, 'rgba(255,59,48,0.14)', tag, { c: C.red, w: 4 });
+    text('k18', '18+', 1745, 166, { size: 52, align: 'center', color: C.chalk, alpha: tag });
     if (!picks.length) {
       text('kn', 'NO VALUE BETS TODAY', 120, 420, { size: 110, italic: true, color: C.red, reveal: eo(seg(lt, 0.5, 1)) });
-      text('kn2', 'The model only flags a pick when it beats the bookies by 4+ points.', 124, 500, { size: 46, weight: 600, color: C.chalk, reveal: eo(seg(lt, 1, 1.6)) });
+      text('kn2', 'Community Info only flags a pick when it beats the bookies by 4+ points.', 124, 500, { size: 46, weight: 600, color: C.chalk, reveal: eo(seg(lt, 1, 1.6)) });
     }
     picks.forEach((p, i) => {
       const y = 250 + i * 150, q = eo(seg(lt, 0.4 + i * 0.4, 0.9 + i * 0.4));
@@ -450,36 +454,51 @@ function scenePicks() {
       text(`kk${i}`, p.kind, 160, y + 50, { size: 30, weight: 600, spacing: 4, color: p.kind === 'VALUE' ? C.home : C.away, alpha: q });
       text(`kl${i}`, upper(p.label), 160, y + 104, { size: 54, italic: true, alpha: q, maxW: 900 });
       text(`km${i}`, upper(p.match), 1100, y + 52, { size: 30, weight: 600, spacing: 1, color: C.dim, alpha: q, maxW: 680 });
-      text(`ko${i}`, `${p.odds ? '@ ' + p.odds + '  ·  ' : ''}MODEL ${pct(p.model)}${p.bookmaker != null ? '  ·  MARKET ' + pct(p.bookmaker) : ''}`, 1100, y + 104, { size: 40, italic: true, color: C.chalk, alpha: q, maxW: 680 });
+      text(`ko${i}`, `${p.odds ? '@ ' + p.odds + '  ·  ' : ''}COMMUNITY INFO ${pct(p.model)}${p.bookmaker != null ? '  ·  MARKET ' + pct(p.bookmaker) : ''}`, 1100, y + 104, { size: 40, italic: true, color: C.chalk, alpha: q, maxW: 680 });
     });
-    disclaimer(lt, 0.3, 120, 900, 1680);
   } };
 }
 
-function disclaimer(lt, at, x, y, w, size = 32) {
-  const q = eo(seg(lt, at, at + 0.4)), lines = wrap(B.disclaimer, w - 80, size, 600);
-  const h = lines.length * size * 1.3 + 36;
-  rect(x, y, w, h, 'rgba(255,59,48,0.12)', q); rect(x, y, 6, h, C.red, q);
-  lines.forEach((ln, i) => text(`disc${i}`, ln, x + 30, y + 18 + size * (1 + i * 1.3), { size, weight: 600, color: C.chalk, alpha: q }));
-}
-
 function sceneEnd() {
-  return { id: 'end', dur: SHORT ? 7.2 : 9.2, section: 'end', draw(lt) {
-    const cx = SHORT ? 540 : 960, cy = SHORT ? 700 : 400, sz = SHORT ? 130 : 140;
-    const a = eo(seg(lt, 0, 0.4));
-    text('e1', 'PITCH', cx, cy, { size: sz, italic: true, align: 'center', alpha: a });
-    const ew = measure('PROPHET', sz) + sz * 0.5;
-    rect(cx - ew / 2, cy + sz * 0.15, ew, sz * 1.0, C.home, a);
-    text('e2', 'PROPHET', cx, cy + sz * 0.97, { size: sz, italic: true, align: 'center', color: '#0C1411', alpha: a });
+  return { id: 'end', dur: SHORT ? 9 : 6, section: 'end', draw(lt) {
+    // The short's last word: send people to the channel. Paced with the voice line, inside the area
+    // the phone apps' buttons and captions don't cover (they sit over the bottom ~300 px).
     if (SHORT) {
-      text('e3', 'FULL BREAKDOWN', cx, 1120, { size: 96, italic: true, align: 'center', color: C.chalk, reveal: eo(seg(lt, 0.5, 1)) });
-      text('e4', 'ON YOUTUBE', cx, 1220, { size: 96, italic: true, align: 'center', color: C.home, reveal: eo(seg(lt, 0.7, 1.2)) });
-      disclaimer(lt, 1.0, 70, 1480, 940, 34);
-    } else {
-      text('e3', "TOMORROW'S CALL DROPS BEFORE KICK-OFF", cx, 690, { size: 60, italic: true, align: 'center', reveal: eo(seg(lt, 0.5, 1.1)) });
-      text('e4', 'SUBSCRIBE  ·  FOLLOW  ·  CHECK OUR TRACK RECORD', cx, 760, { size: 38, weight: 600, spacing: 4, align: 'center', color: C.home, reveal: eo(seg(lt, 0.9, 1.4)) });
-      disclaimer(lt, 1.2, 360, 860, 1200, 30);
+      const cx = 540;
+      text('e1', 'THAT WAS JUST ONE GAME.', cx, 330, { size: 92, italic: true, align: 'center', reveal: eo(seg(lt, 0.2, 0.7)), maxW: 960 });
+      const pop = back(seg(lt, 1.3, 1.75));
+      if (pop > 0) {
+        ctx.save(); ctx.translate(cx * U, 620 * U); ctx.scale(lerp(0.8, 1, pop), lerp(0.8, 1, pop)); ctx.translate(-cx * U, -620 * U);
+        rect(70, 430, 940, 360, C.home, clamp(pop));
+        text('e2', 'FULL ANALYSIS', cx, 580, { size: 140, italic: true, align: 'center', color: '#0C1411', alpha: clamp(pop), maxW: 880 });
+        text('e3', '& PREDICTIONS', cx, 730, { size: 140, italic: true, align: 'center', color: '#0C1411', alpha: clamp(pop), maxW: 880 });
+        ctx.restore();
+      }
+      text('e4', "TODAY'S BIGGEST MATCHES", cx, 880, { size: 72, italic: true, align: 'center', color: C.home, reveal: eo(seg(lt, 2.2, 2.7)), maxW: 940 });
+      text('e5', 'ON YOUTUBE', cx, 975, { size: 80, italic: true, align: 'center', reveal: eo(seg(lt, 2.8, 3.3)), maxW: 940 });
+      text('e8', "WHO'S YOUR PICK? COMMENT BELOW", cx, 1090, { size: 68, italic: true, align: 'center', color: C.away, reveal: eo(seg(lt, 3.4, 3.9)), maxW: 960 });
+      text('e6', 'DO YOU WANT DAILY PREDICTIONS?', cx, 1205, { size: 74, italic: true, align: 'center', color: C.home, reveal: eo(seg(lt, 4.6, 5.1)), maxW: 960 });
+      text('e9', 'FOLLOW COMMUNITY INFO OR', cx, 1290, { size: 62, weight: 600, spacing: 2, align: 'center', reveal: eo(seg(lt, 5.3, 5.7)), maxW: 940 });
+      const btn = back(seg(lt, 5.6, 6));
+      if (btn > 0) {
+        const pulse = 1 + 0.035 * Math.sin(lt * 5.2) * clamp(lt - 6);
+        ctx.save(); ctx.translate(cx * U, 1400 * U); ctx.scale(btn * pulse, btn * pulse); ctx.translate(-cx * U, -1400 * U);
+        ctx.shadowColor = C.red; ctx.shadowBlur = 40 * U;
+        rrect(190, 1325, 700, 150, 75, C.red);
+        ctx.shadowBlur = 0;
+        text('e7', 'SUBSCRIBE', cx, 1435, { size: 104, italic: true, align: 'center', color: '#FFFFFF' });
+        ctx.restore();
+      }
+      return;
     }
+    const cx = 960, cy = 400, sz = 140;
+    const a = eo(seg(lt, 0, 0.4));
+    text('e1', 'COMMUNITY', cx, cy, { size: sz, italic: true, align: 'center', alpha: a });
+    const ew = measure('INFO', sz) + sz * 0.5;
+    rect(cx - ew / 2, cy + sz * 0.15, ew, sz * 1.0, C.home, a);
+    text('e2', 'INFO', cx, cy + sz * 0.97, { size: sz, italic: true, align: 'center', color: '#0C1411', alpha: a });
+    text('e3', 'DO YOU WANT DAILY PREDICTIONS?', cx, 720, { size: 84, italic: true, align: 'center', reveal: eo(seg(lt, 0.5, 1.1)) });
+    text('e4', 'FOLLOW COMMUNITY INFO OR SUBSCRIBE', cx, 820, { size: 56, weight: 600, spacing: 3, align: 'center', color: C.home, reveal: eo(seg(lt, 0.9, 1.4)) });
   } };
 }
 
@@ -488,7 +507,7 @@ function sceneHook(m) {
   const fav = m.model.probs.home >= m.model.probs.away ? ['home', m.home, C.home] : ['away', m.away, C.away];
   return { id: 'hook', dur: 4.8, section: 'hook', draw(lt) {
     bug(dayLabel(B.date).slice(5, 11));
-    text('hk1', "THE MODEL'S CALL", 540, 430, { size: 60, weight: 600, spacing: 6, align: 'center', color: C.dim, reveal: eo(seg(lt, 0, 0.3)) });
+    text('hk1', "COMMUNITY INFO'S CALL", 540, 430, { size: 60, weight: 600, spacing: 6, align: 'center', color: C.dim, reveal: eo(seg(lt, 0, 0.3)) });
     text('hk2', `${upper(m.home)} v ${upper(m.away)}`, 540, 540, { size: 74, italic: true, align: 'center', reveal: eo(seg(lt, 0.1, 0.5)), maxW: 980 });
     const pop = back(seg(lt, 0.4, 0.9));
     ctx.save(); ctx.translate(540 * U, 900 * U); ctx.scale(lerp(0.5, 1, pop), lerp(0.5, 1, pop)); ctx.translate(-540 * U, -900 * U);
@@ -501,8 +520,159 @@ function sceneHook(m) {
   } };
 }
 
+// ---------- special editions (?special=1): scenes come from special.json, not a daily briefing ----------
+const col = k => ({ home: C.home, away: C.away, red: C.red, chalk: C.chalk }[k] || C.chalk);
+function specialScene(s) {
+  const base = { id: s.id, section: s.section };
+  if (s.kind === 'headline') return { ...base, dur: 4, draw(lt) {
+    bug(s.bug);
+    const cx = SHORT ? 540 : 960;
+    let y = SHORT ? 520 : 300;
+    text(`${s.id}k`, s.kicker, cx, y, { size: SHORT ? 60 : 50, weight: 600, spacing: 6, align: 'center', color: C.red, reveal: eo(seg(lt, 0, 0.3)) });
+    y += SHORT ? 40 : 30;
+    s.lines.forEach((l, i) => {
+      const size = SHORT ? l.s : l.s * 1.05; y += size * 1.05;
+      const pop = back(seg(lt, 0.2 + i * 0.3, 0.6 + i * 0.3));
+      if (pop <= 0) return;
+      ctx.save(); ctx.translate(cx * U, (y - size * 0.3) * U); ctx.scale(lerp(0.8, 1, pop), lerp(0.8, 1, pop)); ctx.translate(-cx * U, -(y - size * 0.3) * U);
+      text(`${s.id}l${i}`, l.t, cx, y, { size, italic: true, align: 'center', color: col(l.c), alpha: clamp(pop), maxW: SHORT ? 980 : 1700 });
+      ctx.restore();
+    });
+    if (s.sub) text(`${s.id}s`, s.sub, cx, y + (SHORT ? 110 : 100), { size: SHORT ? 52 : 46, weight: 600, spacing: 3, align: 'center', color: C.home, reveal: eo(seg(lt, 1, 1.5)), maxW: SHORT ? 960 : 1600 });
+  } };
+  if (s.kind === 'history') return { ...base, dur: 7, draw(lt) {
+    bug(s.bug);
+    text(`${s.id}t`, s.title, 120, 180, { size: 92, italic: true, reveal: eo(seg(lt, 0, 0.5)) });
+    text(`${s.id}c`, 'WINNER', 420, 262, { size: 28, weight: 600, spacing: 3, color: C.dim, alpha: seg(lt, 0.3, 0.6), noRead: true });
+    text(`${s.id}c2`, 'RUNNER-UP', 1000, 262, { size: 28, weight: 600, spacing: 3, color: C.dim, alpha: seg(lt, 0.3, 0.6), noRead: true });
+    s.rows.forEach((r, i) => {
+      const y = 280 + i * 62, p = eo(seg(lt, 0.4 + i * 0.14, 0.8 + i * 0.14));
+      if (p <= 0) return;
+      ctx.save(); ctx.globalAlpha = p; ctx.translate((1 - p) * 40 * U, 0); rect(120, y, 1680, 54, 'rgba(8,12,14,0.7)'); ctx.restore();
+      text(`${s.id}y${i}`, r[0], 150, y + 41, { size: 40, italic: true, color: C.home, alpha: p, noRead: true });
+      text(`${s.id}a${i}`, r[1], 420, y + 41, { size: 40, alpha: p, noRead: true });
+      text(`${s.id}b${i}`, r[2], 1000, y + 41, { size: 40, color: C.chalk, alpha: p * 0.75, noRead: true });
+    });
+    const pop = back(seg(lt, 2.6, 3.1));
+    if (pop > 0) { rect(120, 860, 1680, 130, C.home, clamp(pop)); text(`${s.id}f`, s.foot, 960, 950, { size: 96, italic: true, align: 'center', color: '#0C1411', alpha: clamp(pop) }); }
+  } };
+  if (s.kind === 'cards') return { ...base, dur: 3 + s.cards.length * 1.4, draw(lt) {
+    bug(s.bug);
+    const c = col(s.color || 'home');
+    text(`${s.id}t`, s.title, 120, 190, { size: 84, italic: true, color: c, reveal: eo(seg(lt, 0, 0.4)), maxW: 1300 });
+    s.cards.forEach((t, i) => {
+      const y = 280 + i * 165, p = eo(seg(lt, 0.4 + i * 1.1, 0.8 + i * 1.1));
+      if (p <= 0) return;
+      ctx.save(); ctx.globalAlpha = p; ctx.translate((1 - p) * -50 * U, 0); rect(120, y, 1680, 135, C.card); rect(120, y, 10, 135, c); ctx.restore();
+      text(`${s.id}c${i}`, t, 170, y + 88, { size: 56, alpha: p, maxW: 1600 });
+    });
+  } };
+  if (s.kind === 'route') return { ...base, dur: 5 + s.rows.length * 0.6, draw(lt) {
+    bug(s.bug);
+    const c = col(s.color), L = SHORT ? { x: 70, w: 940, y0: 480, step: 150, h: 130, title: 330, foot: 1450, fs: 54 } : { x: 120, w: 1680, y0: 270, step: 100, h: 88, title: 190, foot: 950, fs: 50 };
+    text(`${s.id}t`, s.team, L.x, L.title, { size: SHORT ? 110 : 96, italic: true, color: c, reveal: eo(seg(lt, 0, 0.4)), maxW: L.w });
+    if (!SHORT) text(`${s.id}t2`, 'THE ROAD TO THE FINAL', L.x + 760, L.title, { size: 40, weight: 600, spacing: 3, color: C.dim, reveal: eo(seg(lt, 0.2, 0.6)) });
+    s.rows.forEach((r, i) => {
+      const y = L.y0 + i * L.step, p = eo(seg(lt, 0.5 + i * 0.55, 0.9 + i * 0.55));
+      if (p <= 0) return;
+      const rc = r.res === 'W' ? c : r.res === 'D' ? C.chalk : C.red;
+      ctx.save(); ctx.globalAlpha = p; ctx.translate((1 - p) * -50 * U, 0); rect(L.x, y, L.w, L.h, C.card); rect(L.x, y, 10, L.h, rc); ctx.restore();
+      if (SHORT) {
+        text(`${s.id}s${i}`, r.stage, L.x + 34, y + 44, { size: 28, weight: 600, spacing: 2, color: C.dim, alpha: p, noRead: true });
+        text(`${s.id}o${i}`, r.opp, L.x + 34, y + 104, { size: 58, alpha: p, maxW: 620 });
+        text(`${s.id}r${i}`, r.score, L.x + L.w - 34, y + 92, { size: 84, italic: true, align: 'right', color: rc, alpha: p });
+      } else {
+        text(`${s.id}s${i}`, r.stage, L.x + 40, y + 60, { size: 34, weight: 600, spacing: 2, color: C.dim, alpha: p, noRead: true });
+        text(`${s.id}o${i}`, r.opp, L.x + 320, y + 64, { size: 56, alpha: p });
+        if (r.note) text(`${s.id}n${i}`, r.note, L.x + 980, y + 60, { size: 34, weight: 600, spacing: 2, color: C.chalk, alpha: p });
+        text(`${s.id}r${i}`, r.score, L.x + L.w - 40, y + 68, { size: 70, italic: true, align: 'right', color: rc, alpha: p });
+      }
+    });
+    text(`${s.id}f`, s.foot, SHORT ? 540 : 960, L.foot, { size: SHORT ? 54 : 52, italic: true, align: 'center', color: C.home, reveal: eo(seg(lt, 0.8 + s.rows.length * 0.55, 1.3 + s.rows.length * 0.55)), maxW: L.w });
+  } };
+  if (s.kind === 'compare') return { ...base, dur: 7, draw(lt) {
+    bug(s.bug);
+    text(`${s.id}t`, s.title, 120, 180, { size: 88, italic: true, reveal: eo(seg(lt, 0, 0.4)) });
+    text(`${s.id}L`, s.left, 620, 270, { size: 56, italic: true, align: 'right', color: C.home, alpha: seg(lt, 0.3, 0.6), noRead: true });
+    text(`${s.id}R`, s.right, 1300, 270, { size: 56, italic: true, color: C.away, alpha: seg(lt, 0.3, 0.6), noRead: true });
+    const max = Math.max(...s.rows.flatMap(r => [r.l, r.r]));
+    s.rows.forEach((r, i) => {
+      const y = 320 + i * 165, p = eo(seg(lt, 0.5 + i * 0.9, 1.2 + i * 0.9));
+      if (p <= 0) return;
+      text(`${s.id}l${i}`, r.label, 960, y + 40, { size: 40, weight: 600, spacing: 3, align: 'center', alpha: p });
+      const wl = 760 * (r.l / max) * p, wr = 760 * (r.r / max) * p;
+      rect(940 - wl, y + 60, wl, 64, C.home); rect(980, y + 60, wr, 64, C.away);
+      text(`${s.id}a${i}`, String(r.l), 940 - wl - 20, y + 110, { size: 64, italic: true, align: 'right', color: C.home, alpha: p });
+      text(`${s.id}b${i}`, String(r.r), 980 + wr + 20, y + 110, { size: 64, italic: true, color: C.away, alpha: p });
+    });
+  } };
+  if (s.kind === 'scorers') return { ...base, dur: 6, draw(lt) {
+    bug(s.bug);
+    text(`${s.id}t`, s.title, 120, 180, { size: 92, italic: true, reveal: eo(seg(lt, 0, 0.4)) });
+    const side = (d, x, c, off) => {
+      text(`${s.id}${d.name}`, d.name, x, 320, { size: 70, italic: true, color: c, reveal: eo(seg(lt, off, off + 0.4)) });
+      d.rows.forEach(([n, g], i) => {
+        const y = 370 + i * 170, p = eo(seg(lt, off + 0.4 + i * 0.5, off + 0.8 + i * 0.5));
+        if (p <= 0) return;
+        rect(x, y, 780, 145, C.card, p); rect(x, y, 10, 145, c, p);
+        text(`${s.id}${d.name}n${i}`, n, x + 40, y + 96, { size: 68, alpha: p, maxW: 520 });
+        text(`${s.id}${d.name}g${i}`, `${g} ${g === 1 ? 'GOAL' : 'GOALS'}`, x + 750, y + 94, { size: 50, italic: true, align: 'right', color: c, alpha: p });
+      });
+    };
+    side(s.left, 120, C.home, 0.3); side(s.right, 1020, C.away, 1.6);
+  } };
+  if (s.kind === 'pitch') return { ...base, dur: 7, draw(lt) {
+    bug(s.bug);
+    text(`${s.id}t`, s.title, 120, 160, { size: 70, italic: true, reveal: eo(seg(lt, 0, 0.4)) });
+    text(`${s.id}s`, s.sub, 124, 206, { size: 28, weight: 600, spacing: 3, color: C.dim, reveal: eo(seg(lt, 0.3, 0.8)) });
+    pitch(410, 245, 1100, lt, s.match, false);
+    probBar(410, 978, 1100, 76, s.match, seg(lt, 2.6, 3.4), `${s.id}b`);
+  } };
+  if (s.kind === 'endcard') return { ...base, dur: 9, draw(lt) {
+    const cx = SHORT ? 540 : 960;
+    if (SHORT) {
+      const pop = back(seg(lt, 0.3, 0.8));
+      if (pop > 0) { rect(70, 300, 940, 300, C.home, clamp(pop)); text(`${s.id}a`, s.top, cx, 430, { size: 100, italic: true, align: 'center', color: '#0C1411', alpha: clamp(pop), maxW: 880 }); text(`${s.id}b`, s.sub, cx, 550, { size: 104, italic: true, align: 'center', color: '#0C1411', alpha: clamp(pop), maxW: 880 }); }
+    } else {
+      text(`${s.id}a`, s.top, cx, 300, { size: 150, italic: true, align: 'center', color: C.home, reveal: eo(seg(lt, 0.2, 0.7)) });
+      text(`${s.id}b`, s.sub, cx, 380, { size: 44, weight: 600, spacing: 3, align: 'center', reveal: eo(seg(lt, 0.8, 1.3)), maxW: 1700 });
+    }
+    const y1 = SHORT ? 760 : 520, y2 = SHORT ? 900 : 630, y3 = SHORT ? 1000 : 710, by = SHORT ? 1110 : 790;
+    text(`${s.id}c`, "WHO'S YOUR PICK? COMMENT BELOW", cx, y1, { size: SHORT ? 68 : 70, italic: true, align: 'center', color: C.away, reveal: eo(seg(lt, 2.4, 2.9)), maxW: 960 });
+    text(`${s.id}d`, 'DO YOU WANT DAILY PREDICTIONS?', cx, y2, { size: SHORT ? 74 : 80, italic: true, align: 'center', color: C.home, reveal: eo(seg(lt, 3.8, 4.3)), maxW: 960 });
+    text(`${s.id}e`, 'FOLLOW COMMUNITY INFO OR', cx, y3, { size: 62, weight: 600, spacing: 2, align: 'center', reveal: eo(seg(lt, 4.6, 5)), maxW: 940 });
+    const btn = back(seg(lt, 4.9, 5.3));
+    if (btn > 0) {
+      const pulse = 1 + 0.035 * Math.sin(lt * 5.2) * clamp(lt - 5.3);
+      ctx.save(); ctx.translate(cx * U, (by + 75) * U); ctx.scale(btn * pulse, btn * pulse); ctx.translate(-cx * U, -(by + 75) * U);
+      ctx.shadowColor = C.red; ctx.shadowBlur = 40 * U;
+      rrect(cx - 350, by, 700, 150, 75, C.red);
+      ctx.shadowBlur = 0;
+      text(`${s.id}f`, 'SUBSCRIBE', cx, by + 110, { size: 104, italic: true, align: 'center', color: '#FFFFFF' });
+      ctx.restore();
+    }
+  } };
+  throw new Error(`Unknown special scene kind: ${s.kind}`);
+}
+
+function setTimeline(sc) {
+  // With narration (voice/dur.json: { sceneId: seconds }), each scene lasts at least its voice line
+  // plus a breath; the line starts VOICE_IN after the cut.
+  let t = 0; TIMELINE = [];
+  for (const s of sc.filter(Boolean)) {
+    const v = VOICE[s.id];
+    const dur = v ? Math.max(s.dur, VOICE_IN + v + VOICE_OUT) : s.dur;
+    TIMELINE.push({ ...s, dur, t0: t, newSection: TIMELINE.length && TIMELINE[TIMELINE.length - 1].section !== s.section });
+    t += dur;
+  }
+  window.DUR = Math.round(t * 100) / 100;
+  window.EV = TIMELINE.flatMap(s => [{ t: s.t0, type: s.newSection ? 'wipe' : 'cut', scene: s.id },
+    ...(VOICE[s.id] ? [{ t: s.t0 + VOICE_IN, type: 'voice', scene: s.id, dur: VOICE[s.id] }] : [])]);
+}
+
 // ---------- assemble ----------
 function build() {
+  if (B.scenes) return setTimeline(B.scenes.map(specialScene));
   const n = Math.max(1, Math.min(5, Number(Q.get('n')) || 3));
   const withModel = B.matches.filter(m => m.model);
   MATCHES = B.matches.slice();
@@ -529,18 +699,7 @@ function build() {
     if (pickTable && pickTable.highlight.size) { TABLE = pickTable; sc.push(sceneTable()); }
     sc.push(scenePicks(), sceneEnd());
   }
-  // With narration (voice/dur.json: { sceneId: seconds }), each scene lasts at least its voice line
-  // plus a breath; the line starts VOICE_IN after the cut.
-  let t = 0; TIMELINE = [];
-  for (const s of sc.filter(Boolean)) {
-    const v = VOICE[s.id];
-    const dur = v ? Math.max(s.dur, VOICE_IN + v + VOICE_OUT) : s.dur;
-    TIMELINE.push({ ...s, dur, t0: t, newSection: TIMELINE.length && TIMELINE[TIMELINE.length - 1].section !== s.section });
-    t += dur;
-  }
-  window.DUR = Math.round(t * 100) / 100;
-  window.EV = TIMELINE.flatMap(s => [{ t: s.t0, type: s.newSection ? 'wipe' : 'cut', scene: s.id },
-    ...(VOICE[s.id] ? [{ t: s.t0 + VOICE_IN, type: 'voice', scene: s.id, dur: VOICE[s.id] }] : [])]);
+  setTimeline(sc);
 }
 
 window.render = t => {
@@ -555,7 +714,7 @@ window.render = t => {
 window.TEXTS = t => { window.render(t); return TXT; };
 
 (async () => {
-  const src = Q.get('briefing') || 'briefing.json';
+  const src = Q.get('special') ? 'special.json' : Q.get('briefing') || 'briefing.json';
   B = await (await fetch(src)).json();
   try { const r = await fetch('voice/dur.json'); if (r.ok) VOICE = await r.json(); } catch { /* silent film: base timings */ }
   await Promise.all([document.fonts.load(`700 40px "Barlow PP"`), document.fonts.load(`600 40px "Barlow PP"`)]);
