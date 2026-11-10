@@ -1,9 +1,9 @@
 # Registers the Pitch Prophet daily run in Windows Task Scheduler (current user, no admin needed).
-#   powershell -ExecutionPolicy Bypass -File scripts\sports-task.ps1 -Start "2026-11-07 07:00"
+#   powershell -ExecutionPolicy Bypass -File scripts\sports-task.ps1 -Start "11:00"
 # Runs while this user is logged in, wakes the laptop from sleep where Windows allows it, and catches
 # up at next start if the time was missed. Remove with: Unregister-ScheduledTask "Pitch Prophet daily"
 param(
-  [string]$Start = "07:00",
+  [string]$Start = "11:00",
   [string]$Name = "Pitch Prophet daily",
   [string]$RunArgs = "",
   [switch]$Once

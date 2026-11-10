@@ -76,25 +76,40 @@ export function nextSlot(brandId, now = new Date()) {
   throw new Error('No free slot in the next year.');
 }
 
-// A card can ask for a place in the day (content_items.slot_pref):
-//   "HH:MM"  that slot, on the first day it's free (Pitch Prophet's full video: 11:00). If that would
-//            miss the card's post_by (a late run, 11:00 already gone), the next free slot instead.
-//   "late"   the latest free slot still before post_by, never the day's first slot, which belongs
-//            to the full video (Pitch Prophet's short). Without a post_by, the day's last free slot.
+// A card can ask for a place in the day (content_items.slot_pref), optionally on a given date:
+//   "HH:MM"            that slot, on the first day it's free. If that would miss the card's post_by,
+//                      the next free slot instead.
+//   "late"             the latest free slot still before post_by and after the full video's 11:00 slot
+//                      (Community Info's short). Without a post_by, the day's last free slot.
+//   "YYYY-MM-DD HH:MM" / "YYYY-MM-DD late"   the same, but on that date (videos made the day before
+//                      the matches: the full video at 11:00 on match day, the short later that day).
 // No preference, or no such slot: the brand's next free slot.
+const LONG_SLOT = '11:00';
 export function chooseSlot(item, now = new Date()) {
   const fallback = () => nextSlot(item.brand_id, now);
-  const pref = item.slot_pref || '';
+  let pref = (item.slot_pref || '').trim();
   if (!pref) return fallback();
+  let first = 0, days = 8;
+  const dated = pref.match(/^(\d{4}-\d\d-\d\d)[ T](.+)$/);
+  if (dated) {
+    const [y, mo, dd] = dated[1].split('-').map(Number), start = new Date(now); start.setHours(0, 0, 0, 0);
+    first = Math.round((new Date(y, mo - 1, dd) - start) / 86400000);
+    days = 1; pref = dated[2];
+    if (first < 0) return fallback();
+  }
   const taken = new Set(db.prepare("SELECT scheduled_at FROM content_items WHERE brand_id=? AND scheduled_at IS NOT NULL AND stage IN ('scheduled','posted') AND id<>?").all(item.brand_id, item.id ?? -1).map(r => r.scheduled_at));
   const at = (day, slot) => { const d = new Date(now); d.setDate(d.getDate() + day); const [h, m] = slot.split(':').map(Number); d.setHours(h, m, 0, 0); return d; };
   const usable = (d, s) => d - now >= LEAD && !taken.has(s) && (!item.post_by || s <= item.post_by);
   if (pref === 'late') {
-    const later = slotsFor(item.brand_id).slice(1).reverse();
-    for (let day = 0; day < 8; day++) for (const slot of later) { const d = at(day, slot), s = stamp(d); if (usable(d, s)) return s; }
+    const later = slotsFor(item.brand_id).filter(x => x > LONG_SLOT).reverse();
+    for (let day = first; day < first + days; day++) for (const slot of later) { const d = at(day, slot), s = stamp(d); if (usable(d, s)) return s; }
     return fallback();
   }
-  for (let day = 0; day < 8; day++) { const d = at(day, pref), s = stamp(d); if (usable(d, s)) return s; }
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(pref)) return fallback();
+  for (let day = first; day < first + days; day++) { const d = at(day, pref), s = stamp(d); if (usable(d, s)) return s; }
+  if (dated) { // that slot is gone: the next free one later the same day
+    for (const slot of slotsFor(item.brand_id).filter(x => x > pref)) { const d = at(first, slot), s = stamp(d); if (usable(d, s)) return s; }
+  }
   return fallback();
 }
 

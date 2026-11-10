@@ -119,7 +119,7 @@ function findTeam(teams, name) {
 }
 
 // ---------- odds ----------
-function parseOdds(oddsBody) {
+export function parseOdds(oddsBody) {
   const book = oddsBody?.response?.[0]?.bookmakers;
   if (!book?.length) return null;
   const pickBook = book.find(b => b.id === 8) || book.find(b => b.id === 1) || book[0]; // Bet365, 10Bet, else first
@@ -133,7 +133,7 @@ function parseOdds(oddsBody) {
     bttsYes: val(bt, 'Yes'), bttsNo: val(bt, 'No')
   };
 }
-function implied(odds) {
+export function implied(odds) {
   const fair = (...xs) => { if (xs.some(x => !x)) return null; const inv = xs.map(x => 1 / x); const s = inv.reduce((a, b) => a + b, 0); return inv.map(x => round(x / s)); };
   const mw = fair(odds.home, odds.draw, odds.away), ou = fair(odds.over25, odds.under25), bt = fair(odds.bttsYes, odds.bttsNo);
   return { home: mw?.[0], draw: mw?.[1], away: mw?.[2], over25: ou?.[0], under25: ou?.[1], bttsYes: bt?.[0], bttsNo: bt?.[1] };

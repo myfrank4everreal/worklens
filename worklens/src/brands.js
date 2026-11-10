@@ -117,7 +117,7 @@ export function seedSportsBrand() {
   // 17:00 and 19:00 carry the evergreen shorts. Set once; the person can change the setting.
   const brand = brandByName(SPORTS_BRAND);
   if (brand && getSetting('brand_sports_slots_v1') !== 'true') {
-    if (!getSetting(`poster_slots_${brand.id}`)) setSetting(`poster_slots_${brand.id}`, '11:00,13:00,17:00,19:00');
+    if (!getSetting(`poster_slots_${brand.id}`)) setSetting(`poster_slots_${brand.id}`, '09:00,10:00,11:00,12:00,13:00,15:00,17:00,18:00,19:00,21:00');
     setSetting('brand_sports_slots_v1', 'true');
   }
 }

@@ -60,8 +60,10 @@ try {
       }
       const notes = `${p.key}\nMade by the Community Info pipeline from the ${date} briefing.${p.srt ? `\nSubtitles: ${p.srt}` : ''}`;
       const existing = db.prepare("SELECT * FROM content_items WHERE notes LIKE ? ORDER BY id DESC").get(`${p.key}\n%`);
-      // The full video always wants 11:00; the short goes as late as its kick-off allows.
-      const pref = p.slot_pref || (format === 'long' ? '11:00' : 'late');
+      // The full video always wants 11:00 on match day; the short goes later that day, as late as its
+      // kick-off allows. Daily films are made the day before, so the preference names the date.
+      const day = /^\d{4}-\d{2}-\d{2}$/.test(date) ? `${date} ` : '';
+      const pref = p.slot_pref || `${day}${format === 'long' ? '11:00' : 'late'}`;
       const stillOpen = existing?.stage === 'scheduled' && replace && existing.scheduled_at > new Date(Date.now() + 5 * 60000).toLocaleString('sv-SE', { timeZone: process.env.SPORTS_TZ || 'Africa/Lagos' }).replace(' ', 'T').slice(0, 16);
       if (existing && ['scheduled', 'posted'].includes(existing.stage) && !stillOpen) { console.log(`${format}: already ${existing.stage} (card ${existing.id})${replace ? ', too late to replace' : ''}`); continue; }
       if (existing) {

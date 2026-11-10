@@ -1,6 +1,7 @@
 // Community Info · make a special edition from src/sports/specials/<slug>.mjs (one-off stories that aren't
 // in the daily briefing). Same film page, voice, mix and master as the daily videos.
 //   node scripts/sports-special.mjs <slug> --format long|short [--stills 1,8,20]
+//   node scripts/sports-special.mjs --file <special.json> --format short   (generated specials)
 // Then queue: npm run sports -- queue <slug>
 // Output: <lemo>/films/pitch-prophet-<slug>-<format>/
 import fs from 'node:fs';
@@ -15,12 +16,19 @@ import { synthesize } from '../src/media/voice.js';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
-const slug = args[0];
 const format = opt('--format', 'long') === 'short' ? 'short' : 'long';
-const specialFile = path.join(root, 'src', 'sports', 'specials', `${slug}.mjs`);
-if (!slug || !fs.existsSync(specialFile)) { console.error(`No special called "${slug}" in src/sports/specials/`); process.exit(1); }
-const { special } = await import(pathToFileURL(specialFile).href);
+// --file <special.json>: a generated special (the Nigeria radar's match previews and results).
+const fileArg = opt('--file', null);
+let special;
+if (fileArg) special = JSON.parse(fs.readFileSync(fileArg, 'utf8'));
+else {
+  const specialFile = path.join(root, 'src', 'sports', 'specials', `${args[0]}.mjs`);
+  if (!args[0] || !fs.existsSync(specialFile)) { console.error(`No special called "${args[0]}" in src/sports/specials/`); process.exit(1); }
+  ({ special } = await import(pathToFileURL(specialFile).href));
+}
+const slug = special.slug;
 const spec = special[format];
+if (!spec) { console.error(`The special "${slug}" has no ${format} version.`); process.exit(1); }
 
 const voiceEnv = path.join(root, 'data', 'sports', 'voice-env', 'Scripts', 'python.exe');
 if (!process.env.WORKLENS_PYTHON && fs.existsSync(voiceEnv)) process.env.WORKLENS_PYTHON = voiceEnv;

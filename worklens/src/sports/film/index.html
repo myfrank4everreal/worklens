@@ -528,7 +528,7 @@ function specialScene(s) {
     bug(s.bug);
     const cx = SHORT ? 540 : 960;
     let y = SHORT ? 520 : 300;
-    text(`${s.id}k`, s.kicker, cx, y, { size: SHORT ? 60 : 50, weight: 600, spacing: 6, align: 'center', color: C.red, reveal: eo(seg(lt, 0, 0.3)) });
+    text(`${s.id}k`, s.kicker, cx, y, { size: SHORT ? 60 : 50, weight: 600, spacing: 6, align: 'center', color: C.red, reveal: eo(seg(lt, 0, 0.3)), maxW: SHORT ? 980 : 1700 });
     y += SHORT ? 40 : 30;
     s.lines.forEach((l, i) => {
       const size = SHORT ? l.s : l.s * 1.05; y += size * 1.05;
@@ -545,13 +545,14 @@ function specialScene(s) {
     text(`${s.id}t`, s.title, 120, 180, { size: 92, italic: true, reveal: eo(seg(lt, 0, 0.5)) });
     text(`${s.id}c`, 'WINNER', 420, 262, { size: 28, weight: 600, spacing: 3, color: C.dim, alpha: seg(lt, 0.3, 0.6), noRead: true });
     text(`${s.id}c2`, 'RUNNER-UP', 1000, 262, { size: 28, weight: 600, spacing: 3, color: C.dim, alpha: seg(lt, 0.3, 0.6), noRead: true });
+    const step = Math.min(62, 560 / s.rows.length), h = step - 8, k = h / 54;
     s.rows.forEach((r, i) => {
-      const y = 280 + i * 62, p = eo(seg(lt, 0.4 + i * 0.14, 0.8 + i * 0.14));
+      const y = 280 + i * step, p = eo(seg(lt, 0.4 + i * 0.14, 0.8 + i * 0.14));
       if (p <= 0) return;
-      ctx.save(); ctx.globalAlpha = p; ctx.translate((1 - p) * 40 * U, 0); rect(120, y, 1680, 54, 'rgba(8,12,14,0.7)'); ctx.restore();
-      text(`${s.id}y${i}`, r[0], 150, y + 41, { size: 40, italic: true, color: C.home, alpha: p, noRead: true });
-      text(`${s.id}a${i}`, r[1], 420, y + 41, { size: 40, alpha: p, noRead: true });
-      text(`${s.id}b${i}`, r[2], 1000, y + 41, { size: 40, color: C.chalk, alpha: p * 0.75, noRead: true });
+      ctx.save(); ctx.globalAlpha = p; ctx.translate((1 - p) * 40 * U, 0); rect(120, y, 1680, h, r[3] ? 'rgba(255,212,0,0.18)' : 'rgba(8,12,14,0.7)'); ctx.restore();
+      text(`${s.id}y${i}`, r[0], 150, y + 41 * k, { size: 40 * k, italic: true, color: C.home, alpha: p, noRead: true });
+      text(`${s.id}a${i}`, r[1], 420, y + 41 * k, { size: 40 * k, color: r[3] ? C.home : undefined, alpha: p, noRead: true });
+      text(`${s.id}b${i}`, r[2], 1000, y + 41 * k, { size: 40 * k, color: C.chalk, alpha: p * 0.75, noRead: true });
     });
     const pop = back(seg(lt, 2.6, 3.1));
     if (pop > 0) { rect(120, 860, 1680, 130, C.home, clamp(pop)); text(`${s.id}f`, s.foot, 960, 950, { size: 96, italic: true, align: 'center', color: '#0C1411', alpha: clamp(pop) }); }
@@ -570,22 +571,25 @@ function specialScene(s) {
   if (s.kind === 'route') return { ...base, dur: 5 + s.rows.length * 0.6, draw(lt) {
     bug(s.bug);
     const c = col(s.color), L = SHORT ? { x: 70, w: 940, y0: 480, step: 150, h: 130, title: 330, foot: 1450, fs: 54 } : { x: 120, w: 1680, y0: 270, step: 100, h: 88, title: 190, foot: 950, fs: 50 };
+    const room = SHORT ? 900 : 600, h0 = L.h; // more rows than fit at full size: shrink rows and their text together
+    if (s.rows.length * L.step > room) { L.step = room / s.rows.length; L.h = L.step - (SHORT ? 16 : 12); }
+    const k = L.h / h0;
     text(`${s.id}t`, s.team, L.x, L.title, { size: SHORT ? 110 : 96, italic: true, color: c, reveal: eo(seg(lt, 0, 0.4)), maxW: L.w });
-    if (!SHORT) text(`${s.id}t2`, 'THE ROAD TO THE FINAL', L.x + 760, L.title, { size: 40, weight: 600, spacing: 3, color: C.dim, reveal: eo(seg(lt, 0.2, 0.6)) });
+    if (!SHORT) text(`${s.id}t2`, s.road || 'THE ROAD TO THE FINAL', L.x + 760, L.title, { size: 40, weight: 600, spacing: 3, color: C.dim, reveal: eo(seg(lt, 0.2, 0.6)) });
     s.rows.forEach((r, i) => {
       const y = L.y0 + i * L.step, p = eo(seg(lt, 0.5 + i * 0.55, 0.9 + i * 0.55));
       if (p <= 0) return;
       const rc = r.res === 'W' ? c : r.res === 'D' ? C.chalk : C.red;
       ctx.save(); ctx.globalAlpha = p; ctx.translate((1 - p) * -50 * U, 0); rect(L.x, y, L.w, L.h, C.card); rect(L.x, y, 10, L.h, rc); ctx.restore();
       if (SHORT) {
-        text(`${s.id}s${i}`, r.stage, L.x + 34, y + 44, { size: 28, weight: 600, spacing: 2, color: C.dim, alpha: p, noRead: true });
-        text(`${s.id}o${i}`, r.opp, L.x + 34, y + 104, { size: 58, alpha: p, maxW: 620 });
-        text(`${s.id}r${i}`, r.score, L.x + L.w - 34, y + 92, { size: 84, italic: true, align: 'right', color: rc, alpha: p });
+        text(`${s.id}s${i}`, r.stage, L.x + 34, y + 44 * k, { size: 28 * k, weight: 600, spacing: 2, color: C.dim, alpha: p, noRead: true });
+        text(`${s.id}o${i}`, r.opp, L.x + 34, y + 104 * k, { size: 58 * k, alpha: p, maxW: 620 });
+        text(`${s.id}r${i}`, r.score, L.x + L.w - 34, y + 92 * k, { size: 84 * k, italic: true, align: 'right', color: rc, alpha: p });
       } else {
-        text(`${s.id}s${i}`, r.stage, L.x + 40, y + 60, { size: 34, weight: 600, spacing: 2, color: C.dim, alpha: p, noRead: true });
-        text(`${s.id}o${i}`, r.opp, L.x + 320, y + 64, { size: 56, alpha: p });
-        if (r.note) text(`${s.id}n${i}`, r.note, L.x + 980, y + 60, { size: 34, weight: 600, spacing: 2, color: C.chalk, alpha: p });
-        text(`${s.id}r${i}`, r.score, L.x + L.w - 40, y + 68, { size: 70, italic: true, align: 'right', color: rc, alpha: p });
+        text(`${s.id}s${i}`, r.stage, L.x + 40, y + 60 * k, { size: 34 * k, weight: 600, spacing: 2, color: C.dim, alpha: p, noRead: true });
+        text(`${s.id}o${i}`, r.opp, L.x + 320, y + 64 * k, { size: 56 * k, alpha: p });
+        if (r.note) text(`${s.id}n${i}`, r.note, L.x + 980, y + 60 * k, { size: 34 * k, weight: 600, spacing: 2, color: C.chalk, alpha: p });
+        text(`${s.id}r${i}`, r.score, L.x + L.w - 40, y + 68 * k, { size: 70 * k, italic: true, align: 'right', color: rc, alpha: p });
       }
     });
     text(`${s.id}f`, s.foot, SHORT ? 540 : 960, L.foot, { size: SHORT ? 54 : 52, italic: true, align: 'center', color: C.home, reveal: eo(seg(lt, 0.8 + s.rows.length * 0.55, 1.3 + s.rows.length * 0.55)), maxW: L.w });
@@ -611,12 +615,13 @@ function specialScene(s) {
     text(`${s.id}t`, s.title, 120, 180, { size: 92, italic: true, reveal: eo(seg(lt, 0, 0.4)) });
     const side = (d, x, c, off) => {
       text(`${s.id}${d.name}`, d.name, x, 320, { size: 70, italic: true, color: c, reveal: eo(seg(lt, off, off + 0.4)) });
+      const step = Math.min(170, 640 / d.rows.length), h = step - 25, k = h / 145;
       d.rows.forEach(([n, g], i) => {
-        const y = 370 + i * 170, p = eo(seg(lt, off + 0.4 + i * 0.5, off + 0.8 + i * 0.5));
+        const y = 370 + i * step, p = eo(seg(lt, off + 0.4 + i * 0.5, off + 0.8 + i * 0.5));
         if (p <= 0) return;
-        rect(x, y, 780, 145, C.card, p); rect(x, y, 10, 145, c, p);
-        text(`${s.id}${d.name}n${i}`, n, x + 40, y + 96, { size: 68, alpha: p, maxW: 520 });
-        text(`${s.id}${d.name}g${i}`, `${g} ${g === 1 ? 'GOAL' : 'GOALS'}`, x + 750, y + 94, { size: 50, italic: true, align: 'right', color: c, alpha: p });
+        rect(x, y, 780, h, C.card, p); rect(x, y, 10, h, c, p);
+        text(`${s.id}${d.name}n${i}`, n, x + 40, y + 96 * k, { size: 68 * k, alpha: p, maxW: 520 });
+        text(`${s.id}${d.name}g${i}`, `${g} ${g === 1 ? 'GOAL' : 'GOALS'}`, x + 750, y + 94 * k, { size: 50 * k, italic: true, align: 'right', color: c, alpha: p });
       });
     };
     side(s.left, 120, C.home, 0.3); side(s.right, 1020, C.away, 1.6);
@@ -634,11 +639,11 @@ function specialScene(s) {
       const pop = back(seg(lt, 0.3, 0.8));
       if (pop > 0) { rect(70, 300, 940, 300, C.home, clamp(pop)); text(`${s.id}a`, s.top, cx, 430, { size: 100, italic: true, align: 'center', color: '#0C1411', alpha: clamp(pop), maxW: 880 }); text(`${s.id}b`, s.sub, cx, 550, { size: 104, italic: true, align: 'center', color: '#0C1411', alpha: clamp(pop), maxW: 880 }); }
     } else {
-      text(`${s.id}a`, s.top, cx, 300, { size: 150, italic: true, align: 'center', color: C.home, reveal: eo(seg(lt, 0.2, 0.7)) });
+      text(`${s.id}a`, s.top, cx, 300, { size: 150, italic: true, align: 'center', color: C.home, reveal: eo(seg(lt, 0.2, 0.7)), maxW: 1760 });
       text(`${s.id}b`, s.sub, cx, 380, { size: 44, weight: 600, spacing: 3, align: 'center', reveal: eo(seg(lt, 0.8, 1.3)), maxW: 1700 });
     }
     const y1 = SHORT ? 760 : 520, y2 = SHORT ? 900 : 630, y3 = SHORT ? 1000 : 710, by = SHORT ? 1110 : 790;
-    text(`${s.id}c`, "WHO'S YOUR PICK? COMMENT BELOW", cx, y1, { size: SHORT ? 68 : 70, italic: true, align: 'center', color: C.away, reveal: eo(seg(lt, 2.4, 2.9)), maxW: 960 });
+    text(`${s.id}c`, s.ask || "WHO'S YOUR PICK? COMMENT BELOW", cx, y1, { size: SHORT ? 68 : 70, italic: true, align: 'center', color: C.away, reveal: eo(seg(lt, 2.4, 2.9)), maxW: 960 });
     text(`${s.id}d`, 'DO YOU WANT DAILY PREDICTIONS?', cx, y2, { size: SHORT ? 74 : 80, italic: true, align: 'center', color: C.home, reveal: eo(seg(lt, 3.8, 4.3)), maxW: 960 });
     text(`${s.id}e`, 'FOLLOW COMMUNITY INFO OR', cx, y3, { size: 62, weight: 600, spacing: 2, align: 'center', reveal: eo(seg(lt, 4.6, 5)), maxW: 940 });
     const btn = back(seg(lt, 4.9, 5.3));

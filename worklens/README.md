@@ -336,8 +336,9 @@ charging you. To stay inside it:
 - Don't shorten these intervals.
 
 **Brand slots and post-by times.** A brand can have its own slots in the setting `poster_slots_<brandId>`
-(Community Info: `11:00,13:00,17:00,19:00`). The cloud bot only sends when cron-job.org calls it, so the cron job's
-hours must include every slot in use (`0,15 11,13,17,19 * * *` for these). A card with `post_by` (match predictions)
+(Community Info since 9 Nov 2026: `09:00,10:00,11:00,12:00,13:00,15:00,17:00,18:00,19:00,21:00`, up to 10 posts a
+day). The cloud bot only sends when cron-job.org calls it, so the cron job's hours must include every slot in use
+(`0,15 9-21 * * *` covers these). A card with `post_by` (match predictions)
 is never given a slot after that time; its note says so instead, and you can post it by hand or drop it.
 
 ## Community Info (football brand, called Pitch Prophet until 8 Nov 2026): data → film → queue
@@ -367,14 +368,27 @@ Daily football predictions made from data only: no match footage, no club crests
   `SPORTS_VOICE`, default `am_fenrir`); each scene stretches to its line. `mix.py` adds a coded groove (ducked under
   the voice) and foley; lemo's `mux.sh` masters to −14 LUFS. Matches kicking off before `--from` (12:00) are left
   out, since the posts go out from 11:00. Over 49 MB, an upload copy is made for Telegram.
-- **Daily run:** `npm run sports:daily` grades past days, builds the briefing, makes both films, queues them and sends
-  one status message to the owner's Telegram (done, quiet day or failed). Windows Task Scheduler runs it at 07:00
-  as **Pitch Prophet daily** (`scripts/sports-task.ps1`). A day already queued is left alone; a late run only covers
-  matches at least an hour away; a day with no major match makes nothing. Logs: `data/sports/logs/`. The laptop must be
+- **Daily run (a day ahead since 9 Nov 2026):** `npm run sports:daily` grades past days, builds **tomorrow's** briefing,
+  makes both films, queues them for tomorrow (full video 11:00, short later that day) and sends one status message to
+  the owner's Telegram (done, quiet day or failed). Once queued, the cloud posts them even if the laptop is off on
+  match day. Windows Task Scheduler runs it at 11:00 as **Pitch Prophet daily** (`scripts/sports-task.ps1`).
+  `--date` picks another day. A day already queued is left alone; a run for today only covers matches at least an
+  hour away; a day with no major match makes no match videos. The Nigerian league (NPFL) is not covered. Logs: `data/sports/logs/`. The laptop must be
   on, or able to wake (Power Options → Allow wake timers → Enable); if it's missed, the task runs at next start.
 - **Voice environment:** `data/sports/voice-env` holds Kokoro for scheduled runs. Packages installed from a Claude
   session land in the Claude app's private folder (`%LOCALAPPDATA%\Packages\Claude_*\LocalCache`), which programs
   outside it, including Task Scheduler, can't see.
+- **Nigeria radar:** `npm run sports:nigeria` runs after every daily run. It finds every Nigeria national team
+  playing tomorrow and the results from yesterday (football through API-Football: Super Eagles, Super Falcons, Olympic
+  Eagles, Flying Eagles, Falconets, Golden Eaglets, Flamingos; basketball through API-Basketball on the same key:
+  D'Tigers, D'Tigress), makes a short for each (preview posted on match day; result in the next free slot; at most 3
+  of each a day; youth sides get no odds talk), and ranks the last two days of Nigeria sport news from Google News
+  (NPFL clubs, betting tips and politics filtered out). The top six stories go to Community Info's Videos → Idea tab and the
+  whole list to Telegram. Saved in `data/sports/nigeria/<day>.json/.md`. Auto videos use API facts only.
+- **Story videos:** the Claude desktop scheduled task **Community Info: Nigeria story videos** (13:30 daily, while the
+  app is open) picks up to two radar stories, checks every fact in two sources, writes a special
+  (`src/sports/specials/story-<day>-<name>.mjs`), renders the short and queues it. Covered stories:
+  `data/sports/nigeria/covered.json`.
 - **Special editions:** one-off stories outside the daily briefing live in `src/sports/specials/<slug>.mjs` (checked facts,
   sources, scenes, narration, copy and slots). Make them with `npm run sports:special -- <slug> --format long|short`, then
   `npm run sports -- queue <slug>`. No odds or betting picks on youth tournaments.
@@ -386,8 +400,9 @@ Daily football predictions made from data only: no match footage, no club crests
   or the market. By the owner's decision the videos carry no spoken disclaimer; the only on-screen notice is a small
   18+ tag on the long video's picks screen. Videos end on "Do you want daily predictions? Follow Community Info or
   subscribe." The written descriptions still say "Predictions, not guarantees. 18+".
-- **Slots:** the bot gives the full video the 11:00 slot and the short the latest free slot before its kick-off
-  (`slot_pref`: `11:00` / `late`). A late run moves the full video to the next free slot. `npm run sports -- queue
+- **Slots:** the bot gives the full video the 11:00 slot and the short the latest free slot after 11:00 and before its
+  kick-off (`slot_pref`: `HH:MM` / `late`, optionally with a date: `2026-11-21 11:00`, `2026-11-21 late`; anything
+  else, e.g. `next`, takes the next free slot). A late run moves the full video to the next free slot. `npm run sports -- queue
   <date> --replace` swaps a remade film into a card that hasn't been sent yet.
 
 ## Workstation · TestLoop bot in the cloud

@@ -1,9 +1,10 @@
-// Community Info · the unattended daily run (Windows Task Scheduler, 07:00; scripts/sports-task.ps1).
-//   npm run sports:daily -- [--date YYYY-MM-DD] [--n 5] [--test]
-// Grades past days → builds today's briefing → makes the long film and the short → queues both for
-// the posting bot → sends one status message to the owner's Telegram (done, quiet day, or failed).
-// Safe to run twice: a day whose two cards already exist is left alone. A late run (the laptop was
-// off at 07:00) only covers matches that haven't kicked off yet.
+// Community Info · the unattended daily run (Windows Task Scheduler, 11:00; scripts/sports-task.ps1).
+//   npm run sports:daily -- [--date YYYY-MM-DD] [--n 5] [--test] [--no-radar]
+// Works a day ahead (since 2026-11-09): grades past days → builds TOMORROW's briefing → makes the long
+// film and the short → queues both for tomorrow (full video 11:00, short later that day) → sends one
+// status message to the owner's Telegram (done, quiet day, or failed). Once queued, the cloud posts
+// them even if the laptop is off on match day. --date picks another day (today: only matches that
+// haven't kicked off yet). Safe to run twice: a day whose two cards already exist is left alone.
 // --test makes the films but queues nothing and marks the Telegram message as a test.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,7 +22,7 @@ const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] :
 const TEST = args.includes('--test');
 const TZ = process.env.SPORTS_TZ || 'Africa/Lagos';
 const today = localDate();
-const date = opt('--date', today);
+const date = opt('--date', localDate(new Date(Date.now() + 86400000)));
 const n = opt('--n', '5');
 const logsDir = path.join(sportsDir, 'logs');
 fs.mkdirSync(logsDir, { recursive: true });
@@ -51,6 +52,9 @@ async function tell(text) {
   } catch (e) { log(`Telegram status failed: ${e.message}`); }
 }
 function finish(status, detail, code = 0) {
+  // Whatever the football day was like, the Nigeria radar runs next: Nigeria's teams' previews and
+  // results, and the news list (scripts/sports-nigeria.mjs). --no-radar skips it.
+  if (!TEST && !args.includes('--no-radar')) run('nigeria radar', 'scripts/sports-nigeria.mjs', []);
   fs.writeFileSync(path.join(sportsDir, 'daily-status.json'), JSON.stringify({ date, status, detail, test: TEST, at: new Date().toISOString(), log: logFile }, null, 2));
   log(`${status}: ${detail}`);
   awake?.kill();
@@ -99,7 +103,7 @@ try {
   }
   const eligible = b.matches.filter(m => m.model && hm(m.kickoffUtc) >= from);
   if (!eligible.some(isBigMatch)) {
-    await tell(`Community Info ${date}: quiet day, no videos made. No major match with a prediction kicks off after ${from} (${b.matches.length} fixtures scanned).`);
+    await tell(`Community Info ${date}: quiet day, no match videos made. No major match with a prediction kicks off after ${from} (${b.matches.length} fixtures scanned).`);
     finish('quiet', `No major match after ${from}.`);
   }
 
@@ -137,7 +141,7 @@ try {
     await tell(`Community Info ${date}: videos made, but FAILED to queue them.\nLog: ${logFile}`);
     finish('failed', 'queue', 1);
   }
-  await tell(`Community Info ${date}: both videos made and queued. The posting bot will give them the next slots.\n${summary}\nPost by: ${L.post_by || 'any time'} (long), ${S.post_by || 'any time'} (short)`);
+  await tell(`Community Info ${date}: both videos made and queued for ${date}: the full video at 11:00, the short later that day.\n${summary}\nPost by: ${L.post_by || 'any time'} (long), ${S.post_by || 'any time'} (short)`);
   finish('done', summary);
 } catch (e) {
   await tell(`Community Info ${date}: FAILED: ${e.message}\nLog: ${logFile}`);

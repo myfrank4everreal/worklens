@@ -28,14 +28,14 @@ export const FD_NAMES = {
 };
 
 // API-Football league ids worth covering on top of football-data.org — the "important match of
-// the day" net: European cups, domestic cups of the big five, internationals, and Nigeria's NPFL.
+// the day" net: European cups, domestic cups of the big five, internationals (Nigeria's NPFL dropped 2026-11-09: not covered).
 export const AF_FEATURED_LEAGUES = {
   2: 'Champions League', 3: 'Europa League', 848: 'Conference League', 531: 'UEFA Super Cup',
   45: 'FA Cup', 48: 'EFL Cup', 143: 'Copa del Rey', 137: 'Coppa Italia', 81: 'DFB-Pokal', 66: 'Coupe de France',
   1: 'World Cup', 4: 'Euro Championship', 5: 'Nations League', 6: 'Africa Cup of Nations', 9: 'Copa América',
   10: 'International Friendly', 15: 'Club World Cup', 29: 'WC Qualifiers Africa', 32: 'WC Qualifiers Europe',
   34: 'WC Qualifiers South America', 36: 'AFCON Qualifiers', 12: 'CAF Champions League', 20: 'CAF Confederation Cup',
-  399: 'NPFL Nigeria', 307: 'Saudi Pro League', 253: 'MLS', 13: 'Copa Libertadores', 11: 'Copa Sudamericana'
+  307: 'Saudi Pro League', 253: 'MLS', 13: 'Copa Libertadores', 11: 'Copa Sudamericana'
 };
 
 // ---------- cache ----------
@@ -164,5 +164,25 @@ async function af(pathAndQuery, ttl) {
 
 export const apiFootball = {
   fixturesOn: date => af(`fixtures?date=${date}`, 30 * MIN),
-  odds: fixtureId => af(`odds?fixture=${fixtureId}`, 2 * HOUR)
+  odds: fixtureId => af(`odds?fixture=${fixtureId}`, 2 * HOUR),
+  events: fixtureId => af(`fixtures/events?fixture=${fixtureId}`, 6 * HOUR)
 };
+
+// ---------- API-Basketball (same API-Sports key, its own 100/day; the free plan sees a few days) ----------
+const abThrottle = makeThrottle('api-basketball', {
+  minGapMs: 6500,
+  readHeaders(h) {
+    const minute = Number(h.get('x-ratelimit-remaining')), daily = Number(h.get('x-ratelimit-requests-remaining'));
+    return { resetMs: MIN, pauseMs: Number.isFinite(minute) && minute <= 1 ? MIN : 0, dailyRemaining: Number.isFinite(daily) ? daily : null };
+  }
+});
+async function ab(pathAndQuery, ttl) {
+  const url = `https://v1.basketball.api-sports.io/${pathAndQuery}`;
+  return cached(`ab:${pathAndQuery}`, ttl, async () => {
+    const { body } = await abThrottle(url, { 'x-apisports-key': afKey() });
+    const errors = body.errors && (Array.isArray(body.errors) ? body.errors : Object.values(body.errors));
+    if (errors?.length) throw new Error(`api-basketball: ${errors.join('; ')}`);
+    return body;
+  });
+}
+export const apiBasketball = { gamesOn: date => ab(`games?date=${date}`, 30 * MIN) };
